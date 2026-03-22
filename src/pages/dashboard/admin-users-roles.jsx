@@ -15,6 +15,22 @@ import {
 } from "../../api/admin";
 import { hasPermission } from "../../utils/auth";
 
+const PERMISSION_CONTEXT = {
+  "users.manage": "Admin > Crear usuario",
+  "roles.manage": "Admin > Roles y permisos",
+  "scope.manage": "Admin > Alcance de datos",
+  "customers.create": "Clientes > Nuevo cliente",
+  "customers.update": "Clientes > Editar",
+  "customers.delete": "Clientes > Inactivar",
+  "prospects.create": "Prospectos > Nuevo prospecto",
+  "prospects.update": "Prospectos > Editar",
+  "prospects.delete": "Prospectos > Inactivar",
+  "prospects.convert": "Prospectos > Convertir a cliente",
+  "activities.create": "Actividades > Nueva actividad",
+  "activities.update": "Actividades > Editar",
+  "activities.complete": "Actividades > Completar/Cancelar",
+};
+
 export function AdminUsersRoles() {
   const canManageUsers = hasPermission("users.manage");
   const canManageRoles = hasPermission("roles.manage");
@@ -510,6 +526,32 @@ export function AdminUsersRoles() {
 
           {canManageRoles && (
             <div className="bg-white rounded-lg shadow p-4">
+              <h2 className="text-lg font-semibold mb-3">Permisos disponibles ({permissions.length})</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="text-left p-2">Clave</th>
+                      <th className="text-left p-2">Descripcion</th>
+                      <th className="text-left p-2">Ubicacion</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {permissions.map((perm) => (
+                      <tr key={perm.permission_id} className="border-t">
+                        <td className="p-2 font-mono text-xs">{perm.permission_key}</td>
+                        <td className="p-2">{perm.permission_description}</td>
+                        <td className="p-2 text-xs text-gray-500">{PERMISSION_CONTEXT[perm.permission_key] || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {canManageRoles && (
+            <div className="bg-white rounded-lg shadow p-4">
               <h2 className="text-lg font-semibold mb-3">Crear rol</h2>
               <form className="grid grid-cols-1 md:grid-cols-2 gap-3" onSubmit={handleCreateRole}>
                 <input className="border rounded p-2" placeholder="Nombre del rol" value={roleFormData.role_name} onChange={(e) => setRoleFormData((p) => ({ ...p, role_name: e.target.value }))} required />
@@ -521,7 +563,7 @@ export function AdminUsersRoles() {
                     {permissions.map((permission) => (
                       <label key={permission.permission_id} className="border rounded p-2 flex items-center gap-2 text-sm">
                         <input type="checkbox" checked={roleFormData.permission_ids.includes(permission.permission_id)} onChange={() => togglePermissionOnRoleForm(permission.permission_id)} />
-                        {permission.permission_key}
+                        {permission.permission_description || permission.permission_key}
                       </label>
                     ))}
                   </div>
@@ -567,7 +609,7 @@ export function AdminUsersRoles() {
                   {permissions.map((permission) => (
                     <label key={permission.permission_id} className="border rounded p-2 flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={selectedPermissionIds.includes(permission.permission_id)} onChange={() => togglePermissionOnSelectedRole(permission.permission_id)} />
-                      {permission.permission_key}
+                      {permission.permission_description || permission.permission_key}
                     </label>
                   ))}
                 </div>

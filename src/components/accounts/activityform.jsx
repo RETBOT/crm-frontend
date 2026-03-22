@@ -12,10 +12,13 @@ export const ActivityForm = ({
   contacts,
   initialData,
   customerId,
+  customerList = [],
   submitLabel,
   onSave,
   onCancel,
 }) => {
+  const needsCustomerSelector = customerList.length > 0 && !customerId && !initialData?.CUSTOMER_ID;
+
   const [formData, setFormData] = useState({
     TYPE: initialData?.TYPE || "",
     SUBJECT: initialData?.SUBJECT || "",
@@ -25,6 +28,7 @@ export const ActivityForm = ({
       : "",
     PRIORITY: initialData?.PRIORITY || "Media",
     CONTACT_ID: initialData?.CONTACT_ID || "",
+    CUSTOMER_ID: customerId || initialData?.CUSTOMER_ID || "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -41,8 +45,16 @@ export const ActivityForm = ({
     setSaving(true);
 
     try {
+      const effectiveCustomerId = customerId || formData.CUSTOMER_ID;
+
+      if (!effectiveCustomerId) {
+        setError("Debe seleccionar un cliente");
+        setSaving(false);
+        return;
+      }
+
       const payload = {
-        CUSTOMER_ID: customerId,
+        CUSTOMER_ID: Number(effectiveCustomerId),
         CONTACT_ID: formData.CONTACT_ID ? Number(formData.CONTACT_ID) : null,
         OPPORTUNITY_ID: null,
         TYPE: formData.TYPE,
@@ -80,6 +92,23 @@ export const ActivityForm = ({
       )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {needsCustomerSelector && (
+          <select
+            name="CUSTOMER_ID"
+            value={formData.CUSTOMER_ID}
+            onChange={handleChange}
+            className="border rounded p-2 md:col-span-2"
+            required
+          >
+            <option value="">Selecciona cliente</option>
+            {customerList.map((c) => (
+              <option key={c.CLIENTEID || c.customer_id} value={c.customer_id || c.CLIENTEID}>
+                {c.NOMBRECLI || c.customer_name}
+              </option>
+            ))}
+          </select>
+        )}
+
         <select
           name="TYPE"
           value={formData.TYPE}

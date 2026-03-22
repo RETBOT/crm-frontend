@@ -21,12 +21,13 @@ import {
   UserGroupIcon,
   ClockIcon,
   ExclamationCircleIcon,
+  ExclamationTriangleIcon,
   ClipboardDocumentCheckIcon,
 } from "@heroicons/react/24/solid";
 import { StatisticsCard } from "@/widgets/cards";
 import { StatisticsChart } from "@/widgets/charts";
 import { chartsConfig } from "@/configs";
-import { getDashboardHome } from "../../api/dashboard";
+import { getDashboardHome, getOverdueActivities } from "../../api/dashboard";
 
 function toCurrency(amount) {
   return new Intl.NumberFormat("es-MX", {
@@ -77,6 +78,7 @@ export function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
+  const [overdue, setOverdue] = useState({ count: 0, items: [] });
 
   useEffect(() => {
     let mounted = true;
@@ -86,8 +88,14 @@ export function Home() {
       setError("");
 
       try {
-        const response = await getDashboardHome();
-        if (mounted) setData(response);
+        const [response, overdueData] = await Promise.all([
+          getDashboardHome(),
+          getOverdueActivities().catch(() => ({ count: 0, items: [] })),
+        ]);
+        if (mounted) {
+          setData(response);
+          setOverdue(overdueData);
+        }
       } catch (err) {
         if (mounted) setError(err.message || "No se pudo cargar el dashboard");
       } finally {
@@ -237,6 +245,51 @@ export function Home() {
         <Card className="mb-6 border border-red-200 bg-red-50 shadow-sm">
           <CardBody>
             <Typography color="red">{error}</Typography>
+          </CardBody>
+        </Card>
+      )}
+
+      {!loading && overdue.count > 0 && (
+        <Card className="mb-6 border border-red-200 bg-red-50 shadow-sm">
+          <CardBody className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
+                <Typography variant="h6" color="red" className="font-bold">
+                  {overdue.count} {overdue.count === 1 ? "actividad vencida" : "actividades vencidas"}
+                </Typography>
+              </div>
+              <a
+                href="/dashboard/activities?status=VENCIDA"
+                className="text-sm text-red-600 font-medium hover:text-red-800 underline"
+              >
+                Ver todas
+              </a>
+            </div>
+            <div className="space-y-2">
+              {overdue.items.slice(0, 5).map((item) => (
+                <div
+                  key={item.activity_id}
+                  className="flex items-center justify-between bg-white rounded-lg p-3 border border-red-100"
+                >
+                  <div>
+                    <p className="font-medium text-sm">{item.subject}</p>
+                    <p className="text-xs text-gray-500">{item.customer_name}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold">
+                      {item.days_overdue}d vencida
+                    </span>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(item.due_at).toLocaleDateString("es-MX", {
+                        day: "2-digit",
+                        month: "short",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardBody>
         </Card>
       )}

@@ -16,6 +16,7 @@ import {
   getTiposActividad,
 } from "../../api/activities";
 import { ActivityForm } from "./activityform";
+import { hasPermission } from "../../utils/auth";
 
 const statusStyles = {
   Pendiente: "bg-yellow-100 text-yellow-800",
@@ -52,6 +53,17 @@ function formatDate(dateStr) {
   } catch {
     return dateStr;
   }
+}
+
+function isOverdue(activity) {
+  if (!activity.DUE_AT) return false;
+  if (activity.STATUS === "Completada" || activity.STATUS === "Cancelada") return false;
+  return new Date(activity.DUE_AT) < new Date();
+}
+
+function daysOverdue(dueAt) {
+  const diff = Date.now() - new Date(dueAt).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
 export const ActivityList = ({ clienteId, contacts = [] }) => {
@@ -117,7 +129,7 @@ export const ActivityList = ({ clienteId, contacts = [] }) => {
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Actividades</h3>
-        {!showForm && (
+        {!showForm && hasPermission("activities.create") && (
           <button
             className="flex items-center bg-blue-600 text-white px-3 py-2 rounded text-sm"
             onClick={() => setShowForm(true)}
@@ -153,8 +165,8 @@ export const ActivityList = ({ clienteId, contacts = [] }) => {
       ) : actividades.length === 0 ? (
         <div className="text-center py-8 text-gray-500">No hay actividades registradas</div>
       ) : (
-        actividades.map((act) => (
-          <div key={act.ACTIVITYID} className="border rounded p-3 mb-2">
+          actividades.map((act) => (
+          <div key={act.ACTIVITYID} className={`border rounded p-3 mb-2 ${isOverdue(act) ? "border-l-4 border-l-red-400 bg-red-50" : ""}`}>
             <div className="flex items-start justify-between">
               <div className="flex items-start">
                 <div className="mr-3 mt-1">{typeIcons[act.TYPE] || <FiClock className="mr-1 text-gray-400" />}</div>
@@ -173,9 +185,14 @@ export const ActivityList = ({ clienteId, contacts = [] }) => {
                       {act.PRIORITY_NAME || act.PRIORITY}
                     </span>
                     {act.DUE_AT && (
-                      <span className="ml-2">
-                        <FiCalendar className="inline mr-1" />
+                      <span className={`ml-2 ${isOverdue(act) ? "text-red-600 font-semibold" : ""}`}>
+                        <FiCalendar className={`inline mr-1 ${isOverdue(act) ? "text-red-400" : ""}`} />
                         {formatDate(act.DUE_AT)}
+                        {isOverdue(act) && (
+                          <span className="ml-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                            Vencida {daysOverdue(act.DUE_AT)}d
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>
@@ -192,7 +209,7 @@ export const ActivityList = ({ clienteId, contacts = [] }) => {
                 {act.STATUS}
               </span>
             </div>
-            {act.STATUS === "Pendiente" || act.STATUS === "Programada" ? (
+            {(act.STATUS === "Pendiente" || act.STATUS === "Programada") && hasPermission("activities.complete") ? (
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   className="text-gray-500 text-sm hover:text-red-600"

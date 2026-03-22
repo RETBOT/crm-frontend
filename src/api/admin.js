@@ -106,3 +106,21 @@ export const updateAdminUserScope = async (userId, payload) =>
     const response = await axios.put(`${url}admin/users/${userId}/scope`, payload, authHeader());
     return response.data;
   });
+
+export const createAdminPermission = async (payload) =>
+  withRefresh(async () => {
+    const response = await axios.post(`${url}admin/permissions`, payload, authHeader());
+    return response.data;
+  });
+
+export const updateAdminPermission = async (permissionId, payload) =>
+  withRefresh(async () => {
+    const response = await axios.put(`${url}admin/permissions/${permissionId}`, payload, authHeader());
+    return response.data;
+  });
+
+export const deleteAdminPermission = async (permissionId) =>
+  withRefresh(async () => {
+    const response = await axios.delete(`${url}admin/permissions/${permissionId}`, authHeader());
+    return response.data;
+  });

@@ -17,7 +17,9 @@ import {
   getActividades,
   getTiposActividad,
 } from "../../api/activities";
+import { getClientes } from "../../api/accounts";
 import { ActivityForm } from "../../components";
+import { hasPermission } from "../../utils/auth";
 
 const statusStyles = {
   Pendiente: "bg-yellow-100 text-yellow-800",
@@ -65,6 +67,17 @@ function formatTime(dateStr) {
   }
 }
 
+function isOverdue(activity) {
+  if (!activity.DUE_AT) return false;
+  if (activity.STATUS === "Completada" || activity.STATUS === "Cancelada") return false;
+  return new Date(activity.DUE_AT) < new Date();
+}
+
+function daysOverdue(dueAt) {
+  const diff = Date.now() - new Date(dueAt).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
 export function Activities() {
   const [activities, setActivities] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState(null);
@@ -78,12 +91,14 @@ export function Activities() {
   const [showForm, setShowForm] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
   const [activityTypes, setActivityTypes] = useState([]);
+  const [customers, setCustomers] = useState([]);
 
-  const statusOptions = ["", "Pendiente", "Programada", "Completada", "Cancelada"];
+  const statusOptions = ["", "Pendiente", "Programada", "VENCIDA", "Completada", "Cancelada"];
   const statusLabels = {
     "": "Todas",
     Pendiente: "Pendiente",
     Programada: "Programada",
+    VENCIDA: "Vencidas",
     Completada: "Completada",
     Cancelada: "Cancelada",
   };
@@ -132,12 +147,23 @@ export function Activities() {
     }
   };
 
+  const fetchCustomersLight = async () => {
+    try {
+      const res = await getClientes(0, "", "", "ACTIVO", "", 1, 0, "");
+      const data = res.data || res;
+      setCustomers(Array.isArray(data) ? data : []);
+    } catch {
+      setCustomers([]);
+    }
+  };
+
   useEffect(() => {
     fetchActivities();
   }, [activeFilter, debouncedSearch, page]);
 
   useEffect(() => {
     fetchTipos();
+    fetchCustomersLight();
   }, []);
 
   useEffect(() => {
@@ -192,6 +218,7 @@ export function Activities() {
             title={editingActivity ? "Editar Actividad" : "Nueva Actividad"}
             activityTypes={activityTypes}
             contacts={[]}
+            customerList={customers}
             initialData={editingActivity}
             customerId={editingActivity?.CUSTOMER_ID || 0}
             submitLabel={editingActivity ? "Actualizar" : "Crear"}
@@ -232,7 +259,7 @@ export function Activities() {
               ))}
             </div>
 
-            {!showForm && !editingActivity && (
+            {!showForm && !editingActivity && hasPermission("activities.create") && (
               <button
                 className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 whitespace-nowrap"
                 onClick={() => setShowForm(true)}
@@ -269,11 +296,13 @@ export function Activities() {
                   </tr>
                 </thead>
                 <tbody>
-                  {activities.map((activity) => (
+                   {activities.map((activity) => (
                     <tr
                       key={activity.ACTIVITYID}
                       className={`border-t hover:bg-blue-50 cursor-pointer ${
                         selectedActivity?.ACTIVITYID === activity.ACTIVITYID ? "bg-blue-50" : ""
+                      } ${
+                        isOverdue(activity) ? "bg-red-50 border-l-4 border-l-red-400" : ""
                       }`}
                       onClick={() => setSelectedActivity(activity)}
                     >
@@ -291,11 +320,16 @@ export function Activities() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center">
-                          <FiCalendar className="mr-1 text-gray-400" />
+                        <div className={`flex items-center ${isOverdue(activity) ? "text-red-600 font-semibold" : ""}`}>
+                          <FiCalendar className={`mr-1 ${isOverdue(activity) ? "text-red-400" : "text-gray-400"}`} />
                           <span className="mr-2">{formatDate(activity.DUE_AT)}</span>
-                          <FiClock className="mr-1 text-gray-400" />
+                          <FiClock className={`mr-1 ${isOverdue(activity) ? "text-red-400" : "text-gray-400"}`} />
                           <span>{formatTime(activity.DUE_AT)}</span>
+                          {isOverdue(activity) && (
+                            <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                              {daysOverdue(activity.DUE_AT)}d
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">{activity.OWNER_NAME || ""}</td>
@@ -429,14 +463,16 @@ export function Activities() {
               </div>
 
               <div className="md:col-span-2 flex justify-end space-x-3">
-                {selectedActivity.STATUS !== "Completada" && selectedActivity.STATUS !== "Cancelada" && (
+                {selectedActivity.STATUS !== "Completada" && selectedActivity.STATUS !== "Cancelada" && hasPermission("activities.complete") && (
                   <>
-                    <button
-                      className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-                      onClick={() => openEdit(selectedActivity)}
-                    >
-                      Editar
-                    </button>
+                    {hasPermission("activities.update") && (
+                      <button
+                        className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                        onClick={() => openEdit(selectedActivity)}
+                      >
+                        Editar
+                      </button>
+                    )}
                     <button
                       className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
                       onClick={() => handleComplete(selectedActivity.ACTIVITYID, "Cancelada")}
@@ -453,7 +489,7 @@ export function Activities() {
                     </button>
                   </>
                 )}
-                {(selectedActivity.STATUS === "Completada" || selectedActivity.STATUS === "Cancelada") && (
+                {(selectedActivity.STATUS === "Completada" || selectedActivity.STATUS === "Cancelada") && hasPermission("activities.update") && (
                   <button
                     className="px-4 py-2 border rounded-lg hover:bg-gray-50"
                     onClick={() => openEdit(selectedActivity)}

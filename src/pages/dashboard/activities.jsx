@@ -18,7 +18,7 @@ import {
   getActivityUsers,
   getTiposActividad,
 } from "../../api/activities";
-import { getClientes } from "../../api/accounts";
+import { getClientes, getContactos } from "../../api/accounts";
 import { ActivityForm } from "../../components";
 import { hasPermission } from "../../utils/auth";
 
@@ -94,6 +94,7 @@ export function Activities() {
   const [activityTypes, setActivityTypes] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [assignees, setAssignees] = useState([]);
+  const [formContacts, setFormContacts] = useState([]);
   const canAssign = hasPermission("activities.assign");
 
   const statusOptions = ["", "Pendiente", "Programada", "VENCIDA", "Completada", "Cancelada"];
@@ -170,6 +171,20 @@ export function Activities() {
     }
   };
 
+  const fetchFormContacts = async (clienteId) => {
+    if (!clienteId || clienteId === 0) {
+      setFormContacts([]);
+      return;
+    }
+    try {
+      const res = await getContactos(clienteId);
+      const data = Array.isArray(res) ? res : (res.data || []);
+      setFormContacts(data);
+    } catch {
+      setFormContacts([]);
+    }
+  };
+
   useEffect(() => {
     fetchActivities();
   }, [activeFilter, debouncedSearch, page]);
@@ -179,6 +194,14 @@ export function Activities() {
     fetchCustomersLight();
     fetchAssignees();
   }, []);
+
+  useEffect(() => {
+    if (editingActivity?.CUSTOMER_ID) {
+      fetchFormContacts(editingActivity.CUSTOMER_ID);
+    } else {
+      setFormContacts([]);
+    }
+  }, [editingActivity]);
 
   useEffect(() => {
     setPage(1);
@@ -231,9 +254,10 @@ export function Activities() {
           <ActivityForm
             title={editingActivity ? "Editar Actividad" : "Nueva Actividad"}
             activityTypes={activityTypes}
-            contacts={[]}
+            contacts={formContacts}
             customerList={customers}
             assigneeList={canAssign ? assignees : []}
+            onCustomerChange={fetchFormContacts}
             initialData={editingActivity}
             customerId={editingActivity?.CUSTOMER_ID || 0}
             submitLabel={editingActivity ? "Actualizar" : "Crear"}
@@ -241,6 +265,7 @@ export function Activities() {
             onCancel={() => {
               setShowForm(false);
               setEditingActivity(null);
+              setFormContacts([]);
             }}
           />
         )}

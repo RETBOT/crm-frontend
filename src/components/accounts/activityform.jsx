@@ -14,6 +14,7 @@ export const ActivityForm = ({
   customerId,
   customerList = [],
   assigneeList = [],
+  onCustomerChange,
   submitLabel,
   onSave,
   onCancel,
@@ -40,6 +41,10 @@ export const ActivityForm = ({
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === "CUSTOMER_ID" && onCustomerChange) {
+      const numericValue = value ? Number(value) : 0;
+      onCustomerChange(numericValue);
+    }
   };
 
   const handleSubmit = async (event) => {

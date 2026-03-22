@@ -56,7 +56,6 @@ export const ContactForm = ({
             onChange={handleChange}
             className="w-full border rounded p-2"
             required
-            disabled={isEditing}
           />
         </div>
 
@@ -68,7 +67,6 @@ export const ContactForm = ({
             value={formData.APATERNO}
             onChange={handleChange}
             className="w-full border rounded p-2"
-            disabled={isEditing}
           />
         </div>
 
@@ -80,7 +78,6 @@ export const ContactForm = ({
             value={formData.AMATERNO}
             onChange={handleChange}
             className="w-full border rounded p-2"
-            disabled={isEditing}
           />
         </div>
 

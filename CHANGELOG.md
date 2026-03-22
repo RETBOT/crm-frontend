@@ -50,7 +50,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - `README.md` con documentacion completa del proyecto
 
 ### Changed
-- Admin UI: tabla de permisos es solo lectura con columna "Ubicacion"
+- `contacts.jsx` completamente reconectado a API (antes era placeholder con datos hardcodeados)
+- Ahora: selector de cliente, busqueda, CRUD completo (crear/editar/eliminar)
+- Boton "Crear Actividad" funcional desde contacto (pre-llena customerId y contactId)
+- `contactform.jsx`: campos de nombre ahora editables al modificar contacto
+- `activities.jsx`: carga contactos del cliente seleccionado + pasa al ActivityForm
+- `ActivityForm`: acepta `onCustomerChange` callback para cargar contactos dinamicamente
+
+### Fixed
+- Contactos: botones Editar/Eliminar/Crear Actividad ahora funcionan
+- `contactform.jsx`: nombres de contacto deshabilitados al editar (bug corregido)
+- Activities page: dropdown de contactos ahora aparece al seleccionar cliente
 - Admin UI: eliminado formulario de crear/eliminar permisos
 - Admin UI: checkboxes muestran descripcion legible en vez de clave tecnica
 - ActivityList: gating frontend con `hasPermission` (activities.create, activities.complete)

@@ -121,12 +121,20 @@ export function Contacts() {
       return;
     }
     try {
-      await contactos_ABC({
-        ...formData,
-        CLIENTEID: customerId,
-        CONTACTOID: 0,
-        TIPO: "A",
-      });
+      await contactos_ABC(
+        customerId,
+        0,
+        formData.NOMBRE,
+        formData.APATERNO,
+        formData.AMATERNO,
+        formData.TELEFONO,
+        formData.EXTENSION,
+        formData.PUESTOID,
+        formData.COMENTARIOS,
+        formData.WHATSAPP,
+        formData.EMAIL,
+        "A"
+      );
       showNotification("Contacto creado correctamente");
       setShowContactForm(false);
       setEditingContact(null);
@@ -140,12 +148,20 @@ export function Contacts() {
   const handleUpdateContact = async (formData) => {
     try {
       const customerId = editingContact.CLIENTEID || selectedCustomerId;
-      await contactos_ABC({
-        ...formData,
-        CLIENTEID: customerId,
-        CONTACTOID: editingContact.ID || editingContact.contact_id,
-        TIPO: "C",
-      });
+      await contactos_ABC(
+        customerId,
+        editingContact.ID || editingContact.contact_id,
+        formData.NOMBRE,
+        formData.APATERNO,
+        formData.AMATERNO,
+        formData.TELEFONO,
+        formData.EXTENSION,
+        formData.PUESTOID,
+        formData.COMENTARIOS,
+        formData.WHATSAPP,
+        formData.EMAIL,
+        "C"
+      );
       showNotification("Contacto actualizado correctamente");
       setShowContactForm(false);
       setEditingContact(null);
@@ -159,20 +175,20 @@ export function Contacts() {
     if (!window.confirm(`Desea eliminar el contacto ${contact.NOMBRE} ${contact.APATERNO}?`)) return;
     try {
       const customerId = contact.CLIENTEID || selectedCustomerId;
-      await contactos_ABC({
-        NOMBRE: contact.NOMBRE,
-        APATERNO: contact.APATERNO,
-        AMATERNO: contact.AMATERNO,
-        TELEFONO: contact.TELEFONO,
-        EXTENSION: contact.EXTENSION,
-        PUESTOID: contact.PUESTOID,
-        COMENTARIOS: contact.COMENTARIOS,
-        WHATSAPP: contact.WHATSAPP,
-        EMAIL: contact.EMAIL,
-        CLIENTEID: customerId,
-        CONTACTOID: contact.ID || contact.contact_id,
-        TIPO: "B",
-      });
+      await contactos_ABC(
+        customerId,
+        contact.ID || contact.contact_id,
+        contact.NOMBRE,
+        contact.APATERNO,
+        contact.AMATERNO,
+        contact.TELEFONO,
+        contact.EXTENSION,
+        contact.PUESTOID,
+        contact.COMENTARIOS,
+        contact.WHATSAPP,
+        contact.EMAIL,
+        "B"
+      );
       showNotification("Contacto eliminado correctamente");
       if (selectedContact?.ID === contact.ID) setSelectedContact(null);
       fetchContacts();
@@ -199,14 +215,11 @@ export function Contacts() {
     setActivityContact(contact);
     setShowActivityForm(true);
     setShowContactForm(false);
-    if (customerId && !selectedCustomerId) {
-      setFormCustomerId(String(customerId));
-    }
   };
 
   const getActivityCustomerId = () => {
     if (selectedCustomerId) return Number(selectedCustomerId);
-    if (activityContact) return Number(activityContact.customer_id || activityContact.CLIENTEID);
+    if (activityContact) return Number(activityContact.customer_id);
     return 0;
   };
 

@@ -1,4 +1,106 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import { FiMapPin } from "react-icons/fi";
+
+const markerIcon = new L.Icon({
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const DEFAULT_CENTER = [25.5878, -103.3809];
+const DEFAULT_ZOOM = 12;
+
+function MapClickHandler({ onLocationChange }) {
+  useMapEvents({
+    click(e) {
+      onLocationChange(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+function DraggableMarker({ position, onDragEnd }) {
+  const markerRef = useRef(null);
+
+  const eventHandlers = useMemo(
+    () => ({
+      dragend() {
+        const marker = markerRef.current;
+        if (marker) {
+          const { lat, lng } = marker.getLatLng();
+          onDragEnd(lat, lng);
+        }
+      },
+    }),
+    [onDragEnd]
+  );
+
+  if (!position) return null;
+
+  return (
+    <Marker
+      draggable
+      position={position}
+      icon={markerIcon}
+      ref={markerRef}
+      eventHandlers={eventHandlers}
+    />
+  );
+}
+
+function CoordinatePicker({ lat, lon, onChange }) {
+  const hasCoords = lat !== "" && lat !== null && lon !== "" && lon !== null && Number(lat) !== 0 && Number(lon) !== 0;
+  const center = hasCoords ? [Number(lat), Number(lon)] : DEFAULT_CENTER;
+  const markerPos = hasCoords ? [Number(lat), Number(lon)] : null;
+
+  const handleLocationChange = useCallback(
+    (newLat, newLng) => {
+      onChange(newLat.toFixed(6), newLng.toFixed(6));
+    },
+    [onChange]
+  );
+
+  return (
+    <div className="md:col-span-2">
+      <div className="flex items-center gap-2 mb-2">
+        <FiMapPin className="text-gray-400" />
+        <span className="text-sm font-medium text-gray-700">Ubicacion en mapa</span>
+        <span className="text-xs text-gray-400">(click o arrastra el marcador)</span>
+      </div>
+      <div className="rounded-lg overflow-hidden border" style={{ height: 280 }}>
+        <MapContainer
+          center={center}
+          zoom={hasCoords ? 15 : DEFAULT_ZOOM}
+          style={{ height: "100%", width: "100%" }}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          />
+          <MapClickHandler onLocationChange={handleLocationChange} />
+          <DraggableMarker position={markerPos} onDragEnd={handleLocationChange} />
+        </MapContainer>
+      </div>
+      {hasCoords ? (
+        <p className="text-xs text-gray-500 mt-1">
+          Coordenadas: {Number(lat).toFixed(4)}, {Number(lon).toFixed(4)}
+        </p>
+      ) : (
+        <p className="text-xs text-amber-600 mt-1">
+          Haz click en el mapa para seleccionar la ubicacion
+        </p>
+      )}
+    </div>
+  );
+}
 
 export const CustomerForm = ({
   title,
@@ -36,6 +138,10 @@ export const CustomerForm = ({
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleCoordinateChange = useCallback((newLat, newLon) => {
+    setFormData((prev) => ({ ...prev, LAT: newLat, LON: newLon }));
+  }, []);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -76,8 +182,13 @@ export const CustomerForm = ({
         <input name="ESTADO" value={formData.ESTADO} onChange={handleChange} className="border rounded p-2" placeholder="Estado" />
         <input name="EMAIL" type="email" value={formData.EMAIL} onChange={handleChange} className="border rounded p-2" placeholder="Email" />
         <input name="TEL" value={formData.TEL} onChange={handleChange} className="border rounded p-2" placeholder="Teléfono" />
-        <input name="LAT" type="number" step="0.000001" value={formData.LAT} onChange={handleChange} className="border rounded p-2" placeholder="Latitud" />
-        <input name="LON" type="number" step="0.000001" value={formData.LON} onChange={handleChange} className="border rounded p-2" placeholder="Longitud" />
+
+        <CoordinatePicker
+          lat={formData.LAT}
+          lon={formData.LON}
+          onChange={handleCoordinateChange}
+        />
+
         <select name="ESTATUS" value={formData.ESTATUS} onChange={handleChange} className="border rounded p-2">
           <option value="ACTIVO">ACTIVO</option>
           <option value="INACTIVO">INACTIVO</option>

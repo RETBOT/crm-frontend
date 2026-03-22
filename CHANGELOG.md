@@ -7,6 +7,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Mapa interactivo (Leaflet) en formulario de clientes para seleccionar coordenadas por click/arrastrar
+- Componente `CoordinatePicker` con marcador draggable y click-to-place
+- Texto legible de coordenadas debajo del mapa
 - Reset de contrasena desde panel de admin: campo de nueva contrasena + boton "Resetear contrasena"
 - API `resetAdminUserPassword(userId, password)`
 - Bell icon en navbar con badge contador de notificaciones no leidas

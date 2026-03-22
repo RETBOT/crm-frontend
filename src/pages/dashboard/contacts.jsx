@@ -24,6 +24,7 @@ export function Contacts() {
   const [editingContact, setEditingContact] = useState(null);
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [activityContact, setActivityContact] = useState(null);
+  const [formCustomerId, setFormCustomerId] = useState("");
   const [activityTypes, setActivityTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -114,16 +115,22 @@ export function Contacts() {
   });
 
   const handleCreateContact = async (formData) => {
+    const customerId = selectedCustomerId || formCustomerId;
+    if (!customerId) {
+      showNotification("Selecciona un cliente para crear el contacto", "error");
+      return;
+    }
     try {
       await contactos_ABC({
         ...formData,
-        CLIENTEID: selectedCustomerId,
+        CLIENTEID: customerId,
         CONTACTOID: 0,
         TIPO: "A",
       });
       showNotification("Contacto creado correctamente");
       setShowContactForm(false);
       setEditingContact(null);
+      setFormCustomerId("");
       fetchContacts();
     } catch (err) {
       showNotification(err?.message || "Error al crear contacto", "error");
@@ -132,9 +139,10 @@ export function Contacts() {
 
   const handleUpdateContact = async (formData) => {
     try {
+      const customerId = editingContact.CLIENTEID || selectedCustomerId;
       await contactos_ABC({
         ...formData,
-        CLIENTEID: selectedCustomerId,
+        CLIENTEID: customerId,
         CONTACTOID: editingContact.ID || editingContact.contact_id,
         TIPO: "C",
       });
@@ -150,6 +158,7 @@ export function Contacts() {
   const handleDeleteContact = async (contact) => {
     if (!window.confirm(`Desea eliminar el contacto ${contact.NOMBRE} ${contact.APATERNO}?`)) return;
     try {
+      const customerId = contact.CLIENTEID || selectedCustomerId;
       await contactos_ABC({
         NOMBRE: contact.NOMBRE,
         APATERNO: contact.APATERNO,
@@ -160,7 +169,7 @@ export function Contacts() {
         COMENTARIOS: contact.COMENTARIOS,
         WHATSAPP: contact.WHATSAPP,
         EMAIL: contact.EMAIL,
-        CLIENTEID: selectedCustomerId,
+        CLIENTEID: customerId,
         CONTACTOID: contact.ID || contact.contact_id,
         TIPO: "B",
       });
@@ -186,9 +195,19 @@ export function Contacts() {
   };
 
   const openCreateActivity = (contact) => {
+    const customerId = contact.customer_id || contact.CLIENTEID;
     setActivityContact(contact);
     setShowActivityForm(true);
     setShowContactForm(false);
+    if (customerId && !selectedCustomerId) {
+      setFormCustomerId(String(customerId));
+    }
+  };
+
+  const getActivityCustomerId = () => {
+    if (selectedCustomerId) return Number(selectedCustomerId);
+    if (activityContact) return Number(activityContact.customer_id || activityContact.CLIENTEID);
+    return 0;
   };
 
   const selectedCustomer = customers.find(
@@ -230,42 +249,61 @@ export function Contacts() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {selectedCustomerId && (
-              <button
-                className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap"
-                onClick={() => {
-                  setEditingContact(null);
-                  setShowContactForm(true);
-                  setShowActivityForm(false);
-                }}
-              >
-                <FiPlus className="mr-1" /> Nuevo Contacto
-              </button>
-            )}
+            <button
+              className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap"
+              onClick={() => {
+                setEditingContact(null);
+                setShowContactForm(true);
+                setShowActivityForm(false);
+                if (!selectedCustomerId) setFormCustomerId("");
+              }}
+            >
+              <FiPlus className="mr-1" /> Nuevo Contacto
+            </button>
           </div>
 
-          {selectedCustomerId && showContactForm && (
+          {showContactForm && (
             <div className="p-4 border-b">
-              <ContactForm
-                initialData={editingContact || {}}
-                puestos={puestos}
-                onSave={editingContact ? handleUpdateContact : handleCreateContact}
-                onCancel={() => {
-                  setShowContactForm(false);
-                  setEditingContact(null);
-                }}
-                isEditing={!!editingContact}
-              />
+              {!selectedCustomerId && !editingContact && (
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                  <select
+                    className="border rounded p-2 w-full text-sm"
+                    value={formCustomerId}
+                    onChange={(e) => setFormCustomerId(e.target.value)}
+                  >
+                    <option value="">Selecciona un cliente para el contacto</option>
+                    {customers.map((c) => (
+                      <option key={c.customer_id || c.CLIENTEID} value={c.customer_id || c.CLIENTEID}>
+                        {c.customer_name || c.NOMBRECLI}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {(selectedCustomerId || editingContact || formCustomerId) && (
+                <ContactForm
+                  initialData={editingContact || {}}
+                  puestos={puestos}
+                  onSave={editingContact ? handleUpdateContact : handleCreateContact}
+                  onCancel={() => {
+                    setShowContactForm(false);
+                    setEditingContact(null);
+                    setFormCustomerId("");
+                  }}
+                  isEditing={!!editingContact}
+                />
+              )}
             </div>
           )}
 
-          {selectedCustomerId && showActivityForm && activityContact && (
+          {showActivityForm && activityContact && (
             <div className="p-4 border-b">
               <ActivityForm
                 title={`Nueva Actividad para ${activityContact.NOMBRE} ${activityContact.APATERNO}`}
                 activityTypes={activityTypes}
                 contacts={contacts}
-                customerId={Number(selectedCustomerId)}
+                customerId={getActivityCustomerId()}
                 initialData={{ CONTACT_ID: activityContact.ID || activityContact.contact_id }}
                 submitLabel="Crear"
                 onSave={handleCreateActivity}

@@ -78,14 +78,11 @@ export function Contacts() {
   }, []);
 
   const fetchContacts = async () => {
-    if (!selectedCustomerId) {
-      setContacts([]);
-      return;
-    }
     setLoading(true);
     setError("");
     try {
-      const res = await getContactos(selectedCustomerId);
+      const clienteId = selectedCustomerId ? Number(selectedCustomerId) : "";
+      const res = await getContactos(clienteId);
       const data = Array.isArray(res) ? res : res.data || [];
       setContacts(data);
     } catch (err) {
@@ -100,6 +97,10 @@ export function Contacts() {
     fetchContacts();
     setSelectedContact(null);
   }, [selectedCustomerId]);
+
+  useEffect(() => {
+    fetchContacts();
+  }, []);
 
   const filteredContacts = contacts.filter((c) => {
     if (!searchTerm) return true;
@@ -211,7 +212,7 @@ export function Contacts() {
               value={selectedCustomerId}
               onChange={(e) => setSelectedCustomerId(e.target.value)}
             >
-              <option value="">Selecciona un cliente</option>
+              <option value="">Todos los clientes</option>
               {customers.map((c) => (
                 <option key={c.customer_id || c.CLIENTEID} value={c.customer_id || c.CLIENTEID}>
                   {c.customer_name || c.NOMBRECLI}
@@ -219,29 +220,27 @@ export function Contacts() {
               ))}
             </select>
 
+            <div className="relative flex-1 max-w-md">
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre, email o telefono..."
+                className="pl-10 pr-4 py-2 w-full border rounded-lg text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
             {selectedCustomerId && (
-              <>
-                <div className="relative flex-1 max-w-md">
-                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por nombre, email o telefono..."
-                    className="pl-10 pr-4 py-2 w-full border rounded-lg text-sm"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <button
-                  className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap"
-                  onClick={() => {
-                    setEditingContact(null);
-                    setShowContactForm(true);
-                    setShowActivityForm(false);
-                  }}
-                >
-                  <FiPlus className="mr-1" /> Nuevo Contacto
-                </button>
-              </>
+              <button
+                className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap"
+                onClick={() => {
+                  setEditingContact(null);
+                  setShowContactForm(true);
+                  setShowActivityForm(false);
+                }}
+              >
+                <FiPlus className="mr-1" /> Nuevo Contacto
+              </button>
             )}
           </div>
 
@@ -284,18 +283,16 @@ export function Contacts() {
             </div>
           )}
 
-          {!selectedCustomerId ? (
-            <div className="text-center py-12 text-gray-400">
-              Selecciona un cliente para ver sus contactos
-            </div>
-          ) : loading ? (
+          {loading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             </div>
           ) : filteredContacts.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               {contacts.length === 0
-                ? "Este cliente no tiene contactos registrados"
+                ? selectedCustomerId
+                  ? "Este cliente no tiene contactos registrados"
+                  : "No hay contactos registrados"
                 : "No se encontraron contactos con ese filtro"}
             </div>
           ) : (
@@ -304,6 +301,7 @@ export function Contacts() {
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="text-left p-3">Nombre</th>
+                    {!selectedCustomerId && <th className="text-left p-3">Cliente</th>}
                     <th className="text-left p-3">Puesto</th>
                     <th className="text-left p-3">Telefono</th>
                     <th className="text-left p-3">Email</th>
@@ -324,6 +322,9 @@ export function Contacts() {
                           {contact.NOMBRE} {contact.APATERNO} {contact.AMATERNO}
                         </div>
                       </td>
+                      {!selectedCustomerId && (
+                        <td className="p-3 text-gray-500 text-xs">{contact.NOMBRECLI || ""}</td>
+                      )}
                       <td className="p-3 text-gray-600">{contact.PUESTO || ""}</td>
                       <td className="p-3">
                         {contact.TELEFONO && (
@@ -408,10 +409,10 @@ export function Contacts() {
                     <label className="block text-sm font-medium text-gray-500">Puesto</label>
                     <p className="mt-1">{selectedContact.PUESTO || "No especificado"}</p>
                   </div>
-                  {selectedCustomer && (
+                  {selectedContact.NOMBRECLI && (
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Cliente</label>
-                      <p className="mt-1">{selectedCustomer.customer_name || selectedCustomer.NOMBRECLI}</p>
+                      <p className="mt-1">{selectedContact.NOMBRECLI}</p>
                     </div>
                   )}
                 </div>

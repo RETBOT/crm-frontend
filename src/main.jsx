@@ -4,6 +4,7 @@ import App from "./App";
 import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "@material-tailwind/react";
 import { MaterialTailwindControllerProvider } from "@/context";
+import { NotificationProvider } from "./context/notifications";
 import "./css/tailwind.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -11,7 +12,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <ThemeProvider>
         <MaterialTailwindControllerProvider>
-          <App />
+          <NotificationProvider>
+            <App />
+          </NotificationProvider>
         </MaterialTailwindControllerProvider>
       </ThemeProvider>
     </BrowserRouter>

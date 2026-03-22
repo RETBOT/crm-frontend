@@ -7,6 +7,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Bell icon en navbar con badge contador de notificaciones no leidas
+- Dropdown de notificaciones con tipos: asignada (azul), proxima a vencer (amarillo), vencida (rojo)
+- Marcar notificacion como leida al hacer click
+- Boton "Marcar todas como leidas"
+- Contexto global `NotificationProvider` con polling cada 30 segundos
+- API `notifications.js`: getNotifications, getNotificationsBadge, markNotificationRead, markAllNotificationsRead
 - Selector de asignado en `ActivityForm` cuando usuario tiene permiso `activities.assign`
 - API `getActivityUsers()` para obtener usuarios de la sucursal
 - `ActivityList` y `Activities` cargan usuarios si tienen permiso `activities.assign`

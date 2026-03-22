@@ -147,7 +147,7 @@ export function Contacts() {
 
   const handleUpdateContact = async (formData) => {
     try {
-      const customerId = editingContact.CLIENTEID || selectedCustomerId;
+      const customerId = editingContact.customer_id || selectedCustomerId;
       await contactos_ABC(
         customerId,
         editingContact.ID || editingContact.contact_id,
@@ -174,7 +174,7 @@ export function Contacts() {
   const handleDeleteContact = async (contact) => {
     if (!window.confirm(`Desea eliminar el contacto ${contact.NOMBRE} ${contact.APATERNO}?`)) return;
     try {
-      const customerId = contact.CLIENTEID || selectedCustomerId;
+      const customerId = contact.customer_id || selectedCustomerId;
       await contactos_ABC(
         customerId,
         contact.ID || contact.contact_id,

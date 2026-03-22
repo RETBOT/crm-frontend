@@ -169,3 +169,33 @@ export const getTiposActividad = async () => {
     throw new Error("Ocurrio un error inesperado");
   }
 };
+
+export const getActivityUsers = async () => {
+  const token = localStorage.getItem("token");
+  try {
+    const response = await axios.get(`${url}cn/actividades_usuarios`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    const status = error?.response?.status;
+
+    if (status === 401) {
+      return await refreshToken(getActivityUsers);
+    }
+
+    if (status) {
+      const msg = error.response.data?.message || "Error al obtener usuarios";
+      throw new Error(msg);
+    }
+
+    if (error.request) {
+      throw new Error("No hay conexion con el servidor");
+    }
+
+    throw new Error("Ocurrio un error inesperado");
+  }
+};

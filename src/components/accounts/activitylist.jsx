@@ -13,6 +13,7 @@ import {
   completarActividad,
   crearActividad,
   getActividades,
+  getActivityUsers,
   getTiposActividad,
 } from "../../api/activities";
 import { ActivityForm } from "./activityform";
@@ -72,6 +73,8 @@ export const ActivityList = ({ clienteId, contacts = [] }) => {
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [activityTypes, setActivityTypes] = useState([]);
+  const [assignees, setAssignees] = useState([]);
+  const canAssign = hasPermission("activities.assign");
 
   const fetchActividades = async () => {
     setLoading(true);
@@ -103,10 +106,21 @@ export const ActivityList = ({ clienteId, contacts = [] }) => {
     }
   };
 
+  const fetchAssignees = async () => {
+    if (!canAssign) return;
+    try {
+      const res = await getActivityUsers();
+      setAssignees(Array.isArray(res) ? res : []);
+    } catch {
+      setAssignees([]);
+    }
+  };
+
   useEffect(() => {
     if (clienteId) {
       fetchActividades();
       fetchTipos();
+      fetchAssignees();
     }
   }, [clienteId]);
 
@@ -146,6 +160,7 @@ export const ActivityList = ({ clienteId, contacts = [] }) => {
           activityTypes={activityTypes}
           contacts={contacts}
           customerId={clienteId}
+          assigneeList={canAssign ? assignees : []}
           submitLabel="Crear"
           onSave={handleCreate}
           onCancel={() => setShowForm(false)}

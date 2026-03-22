@@ -15,6 +15,7 @@ import {
   completarActividad,
   crearActividad,
   getActividades,
+  getActivityUsers,
   getTiposActividad,
 } from "../../api/activities";
 import { getClientes } from "../../api/accounts";
@@ -92,6 +93,8 @@ export function Activities() {
   const [editingActivity, setEditingActivity] = useState(null);
   const [activityTypes, setActivityTypes] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [assignees, setAssignees] = useState([]);
+  const canAssign = hasPermission("activities.assign");
 
   const statusOptions = ["", "Pendiente", "Programada", "VENCIDA", "Completada", "Cancelada"];
   const statusLabels = {
@@ -157,6 +160,16 @@ export function Activities() {
     }
   };
 
+  const fetchAssignees = async () => {
+    if (!canAssign) return;
+    try {
+      const res = await getActivityUsers();
+      setAssignees(Array.isArray(res) ? res : []);
+    } catch {
+      setAssignees([]);
+    }
+  };
+
   useEffect(() => {
     fetchActivities();
   }, [activeFilter, debouncedSearch, page]);
@@ -164,6 +177,7 @@ export function Activities() {
   useEffect(() => {
     fetchTipos();
     fetchCustomersLight();
+    fetchAssignees();
   }, []);
 
   useEffect(() => {
@@ -219,6 +233,7 @@ export function Activities() {
             activityTypes={activityTypes}
             contacts={[]}
             customerList={customers}
+            assigneeList={canAssign ? assignees : []}
             initialData={editingActivity}
             customerId={editingActivity?.CUSTOMER_ID || 0}
             submitLabel={editingActivity ? "Actualizar" : "Crear"}

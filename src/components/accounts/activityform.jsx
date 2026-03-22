@@ -13,11 +13,13 @@ export const ActivityForm = ({
   initialData,
   customerId,
   customerList = [],
+  assigneeList = [],
   submitLabel,
   onSave,
   onCancel,
 }) => {
   const needsCustomerSelector = customerList.length > 0 && !customerId && !initialData?.CUSTOMER_ID;
+  const needsAssigneeSelector = assigneeList.length > 0 && !initialData?.ACTIVITYID;
 
   const [formData, setFormData] = useState({
     TYPE: initialData?.TYPE || "",
@@ -29,6 +31,7 @@ export const ActivityForm = ({
     PRIORITY: initialData?.PRIORITY || "Media",
     CONTACT_ID: initialData?.CONTACT_ID || "",
     CUSTOMER_ID: customerId || initialData?.CUSTOMER_ID || "",
+    OWNER_USER_ID: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -57,6 +60,7 @@ export const ActivityForm = ({
         CUSTOMER_ID: Number(effectiveCustomerId),
         CONTACT_ID: formData.CONTACT_ID ? Number(formData.CONTACT_ID) : null,
         OPPORTUNITY_ID: null,
+        OWNER_USER_ID: formData.OWNER_USER_ID ? Number(formData.OWNER_USER_ID) : null,
         TYPE: formData.TYPE,
         SUBJECT: formData.SUBJECT,
         NOTES: formData.NOTES,
@@ -153,6 +157,22 @@ export const ActivityForm = ({
             </option>
           ))}
         </select>
+
+        {needsAssigneeSelector && (
+          <select
+            name="OWNER_USER_ID"
+            value={formData.OWNER_USER_ID}
+            onChange={handleChange}
+            className="border rounded p-2"
+          >
+            <option value="">Asignarme a mi</option>
+            {assigneeList.map((u) => (
+              <option key={u.user_id} value={u.user_id}>
+                {u.display_name} {u.branch_name ? `(${u.branch_name})` : ""}
+              </option>
+            ))}
+          </select>
+        )}
 
         {contacts && contacts.length > 0 && (
           <select

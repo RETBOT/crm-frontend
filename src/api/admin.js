@@ -124,3 +124,9 @@ export const deleteAdminPermission = async (permissionId) =>
     const response = await axios.delete(`${url}admin/permissions/${permissionId}`, authHeader());
     return response.data;
   });
+
+export const resetAdminUserPassword = async (userId, password) =>
+  withRefresh(async () => {
+    const response = await axios.put(`${url}admin/users/${userId}/password`, { password }, authHeader());
+    return response.data;
+  });

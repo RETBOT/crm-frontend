@@ -9,6 +9,7 @@ import {
   getAdminRoutes,
   getAdminUserScope,
   getAdminUsers,
+  resetAdminUserPassword,
   updateAdminRolePermissions,
   updateAdminUserRoles,
   updateAdminUserScope,
@@ -67,6 +68,7 @@ export function AdminUsersRoles() {
     role_description: "",
     permission_ids: [],
   });
+  const [resetPassword, setResetPassword] = useState("");
 
   const selectedUser = useMemo(
     () => users.find((u) => Number(u.user_id) === Number(selectedUserId)) || null,
@@ -342,6 +344,36 @@ export function AdminUsersRoles() {
     }
   };
 
+  const handleResetPassword = async () => {
+    setMessage("");
+    setError("");
+
+    if (!selectedUser) {
+      setError("Selecciona un usuario");
+      return;
+    }
+
+    if (!canManageUsers) {
+      setError("No cuenta con permisos para resetear contrasenas");
+      return;
+    }
+
+    if (!resetPassword || resetPassword.length < 6) {
+      setError("La contrasena debe tener al menos 6 caracteres");
+      return;
+    }
+
+    if (!window.confirm(`Desea cambiar la contrasena de ${selectedUser.username}?`)) return;
+
+    try {
+      await resetAdminUserPassword(selectedUser.user_id, resetPassword);
+      setMessage(`Contrasena de ${selectedUser.username} actualizada correctamente`);
+      setResetPassword("");
+    } catch (err) {
+      setError(err.message || "No se pudo resetear la contrasena");
+    }
+  };
+
   const handleSaveUserScope = async () => {
     setMessage("");
     setError("");
@@ -459,6 +491,29 @@ export function AdminUsersRoles() {
               </div>
               <div className="flex justify-end">
                 <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onClick={handleSaveUserRoles}>Guardar roles</button>
+              </div>
+            </div>
+          )}
+
+          {canManageUsers && selectedUser && (
+            <div className="bg-white rounded-lg shadow p-4">
+              <h2 className="text-lg font-semibold mb-3">Resetear contrasena de {selectedUser.username}</h2>
+              <div className="flex items-center gap-3">
+                <input
+                  className="border rounded p-2 flex-1 max-w-sm"
+                  type="password"
+                  placeholder="Nueva contrasena (minimo 6 caracteres)"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  minLength={6}
+                />
+                <button
+                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+                  onClick={handleResetPassword}
+                  disabled={!resetPassword || resetPassword.length < 6}
+                >
+                  Resetear contrasena
+                </button>
               </div>
             </div>
           )}

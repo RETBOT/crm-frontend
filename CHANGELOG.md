@@ -7,6 +7,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Reset de contrasena desde panel de admin: campo de nueva contrasena + boton "Resetear contrasena"
+- API `resetAdminUserPassword(userId, password)`
 - Bell icon en navbar con badge contador de notificaciones no leidas
 - Dropdown de notificaciones con tipos: asignada (azul), proxima a vencer (amarillo), vencida (rojo)
 - Marcar notificacion como leida al hacer click

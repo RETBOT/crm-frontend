@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiFileText, FiCalendar, FiDollarSign, FiCheckCircle, FiXCircle, FiPlus, FiMenu, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { getClientes, getContactos, getSucursales, getRutas, getPuestos, contactos_ABC, clientes_ABC } from "../../api/accounts";
-import { ContactForm, CustomerForm, Notification } from "../../components/index";
+import { ContactForm, CustomerForm, ActivityList, Notification } from "../../components/index";
 import { hasPermission } from "../../utils/auth";
 
 function getOportunidades(clienteid) {
@@ -149,8 +149,7 @@ export function Accounts() {
       let data;
       if (tab === "Contactos") data = await fetchContactos(cliente.CLIENTEID);
       if (tab === "Oportunidades") data = getOportunidades(cliente.CLIENTEID);
-      if (tab === "Actividades") data = getTareas(cliente.CLIENTEID);
-      setSelectedAccount(prev => ({ ...prev, [tab]: data }));
+      if (tab !== "Actividades") setSelectedAccount(prev => ({ ...prev, [tab]: data }));
     } catch (e) { 
       console.error(e); 
     } finally {
@@ -633,39 +632,7 @@ export function Accounts() {
           </div>
         );
       case "Actividades":
-        return (
-          <div className="p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Tareas</h3>
-              <button className="flex items-center bg-blue-600 text-white px-3 py-2 rounded text-sm">
-                <FiPlus className="mr-1"/>Nueva
-              </button>
-            </div>
-            {acc.tasks?.length > 0 ? acc.tasks.map((t, idx) => (
-              <div key={idx} className="border rounded p-3 mb-2">
-                <div className="flex items-start">
-                  <div className="mr-3 mt-1">
-                    {t.completed ? <FiCheckCircle className="text-green-500"/> : <FiCalendar className="text-gray-400"/>}
-                  </div>
-                  <div className="flex-1">
-                    <div className={`font-medium ${t.completed ? "line-through text-gray-400" : ""}`}>
-                      {t.description}
-                    </div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      <div>Asignado a: {t.assignedTo}</div>
-                      <div>Vence: {t.dueDate}</div>
-                    </div>
-                  </div>
-                </div>
-                {!t.completed && (
-                  <div className="mt-2 flex justify-end">
-                    <button className="text-blue-600 text-sm">Completar</button>
-                  </div>
-                )}
-              </div>
-            )) : <EmptyState message="No hay tareas pendientes" />}
-          </div>
-        );
+        return <ActivityList clienteId={acc.customer_id || acc.CLIENTEID} contacts={acc.Contactos || []} />;
       default:
         return null;
     }

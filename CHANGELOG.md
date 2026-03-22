@@ -7,6 +7,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Buscador de direcciones con geocoding Nominatim en mapa de formulario de clientes
+- Auto-llenado del buscador con los campos de direccion del formulario
 - Mapa interactivo (Leaflet) en formulario de clientes para seleccionar coordenadas por click/arrastrar
 - Componente `CoordinatePicker` con marcador draggable y click-to-place
 - Texto legible de coordenadas debajo del mapa

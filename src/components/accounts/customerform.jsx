@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { FiMapPin } from "react-icons/fi";
+import { FiMapPin, FiSearch } from "react-icons/fi";
 
 const markerIcon = new L.Icon({
   iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
@@ -55,25 +55,122 @@ function DraggableMarker({ position, onDragEnd }) {
   );
 }
 
-function CoordinatePicker({ lat, lon, onChange }) {
+function MapController({ flyTo }) {
+  const map = useMap();
+  useEffect(() => {
+    if (flyTo) {
+      map.flyTo(flyTo, 16, { duration: 0.8 });
+    }
+  }, [flyTo, map]);
+  return null;
+}
+
+function buildAddressText(fields) {
+  return [fields.CALLE, fields.NUM_EXT, fields.COLONIA, fields.CIUDAD, fields.ESTADO]
+    .filter(Boolean)
+    .join(", ");
+}
+
+async function geocodeAddress(query) {
+  const url = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
+    q: query,
+    format: "json",
+    limit: 1,
+    addressdetails: 1,
+  })}`;
+
+  const response = await fetch(url, {
+    headers: { "User-Agent": "CRM-App/1.0" },
+  });
+  const data = await response.json();
+
+  if (data.length === 0) return null;
+  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+}
+
+function CoordinatePicker({ lat, lon, onChange, addressFields }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [flyToPos, setFlyToPos] = useState(null);
+
   const hasCoords = lat !== "" && lat !== null && lon !== "" && lon !== null && Number(lat) !== 0 && Number(lon) !== 0;
   const center = hasCoords ? [Number(lat), Number(lon)] : DEFAULT_CENTER;
   const markerPos = hasCoords ? [Number(lat), Number(lon)] : null;
 
+  useEffect(() => {
+    const autoAddress = buildAddressText(addressFields);
+    if (autoAddress && !searchQuery) {
+      setSearchQuery(autoAddress);
+    }
+  }, [addressFields]);
+
   const handleLocationChange = useCallback(
     (newLat, newLng) => {
+      setFlyToPos(null);
       onChange(newLat.toFixed(6), newLng.toFixed(6));
     },
     [onChange]
   );
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchError("");
+    try {
+      const result = await geocodeAddress(searchQuery);
+      if (result) {
+        onChange(result.lat.toFixed(6), result.lng.toFixed(6));
+        setFlyToPos([result.lat, result.lng]);
+      } else {
+        setSearchError("No se encontro la direccion");
+      }
+    } catch {
+      setSearchError("Error al buscar la direccion");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
 
   return (
     <div className="md:col-span-2">
       <div className="flex items-center gap-2 mb-2">
         <FiMapPin className="text-gray-400" />
         <span className="text-sm font-medium text-gray-700">Ubicacion en mapa</span>
-        <span className="text-xs text-gray-400">(click o arrastra el marcador)</span>
       </div>
+
+      <div className="flex gap-2 mb-2">
+        <div className="flex-1 relative">
+          <FiSearch className="absolute left-3 top-2.5 text-gray-400" />
+          <input
+            className="pl-9 pr-3 py-2 w-full border rounded-lg text-sm"
+            placeholder="Buscar direccion (ej: Calle Victoria 500, Torreon)"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+        </div>
+        <button
+          type="button"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+          onClick={handleSearch}
+          disabled={searching || !searchQuery.trim()}
+        >
+          {searching ? "Buscando..." : "Buscar"}
+        </button>
+      </div>
+
+      {searchError && (
+        <p className="text-xs text-red-500 mb-2">{searchError}</p>
+      )}
+
       <div className="rounded-lg overflow-hidden border" style={{ height: 280 }}>
         <MapContainer
           center={center}
@@ -86,18 +183,22 @@ function CoordinatePicker({ lat, lon, onChange }) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
           <MapClickHandler onLocationChange={handleLocationChange} />
+          <MapController flyTo={flyToPos} />
           <DraggableMarker position={markerPos} onDragEnd={handleLocationChange} />
         </MapContainer>
       </div>
-      {hasCoords ? (
-        <p className="text-xs text-gray-500 mt-1">
-          Coordenadas: {Number(lat).toFixed(4)}, {Number(lon).toFixed(4)}
-        </p>
-      ) : (
-        <p className="text-xs text-amber-600 mt-1">
-          Haz click en el mapa para seleccionar la ubicacion
-        </p>
-      )}
+      <div className="flex items-center justify-between mt-1">
+        {hasCoords ? (
+          <p className="text-xs text-gray-500">
+            Coordenadas: {Number(lat).toFixed(4)}, {Number(lon).toFixed(4)}
+          </p>
+        ) : (
+          <p className="text-xs text-amber-600">
+            Busca la direccion o haz click en el mapa
+          </p>
+        )}
+        <span className="text-xs text-gray-400">(click o arrastra el marcador)</span>
+      </div>
     </div>
   );
 }
@@ -187,6 +288,7 @@ export const CustomerForm = ({
           lat={formData.LAT}
           lon={formData.LON}
           onChange={handleCoordinateChange}
+          addressFields={formData}
         />
 
         <select name="ESTATUS" value={formData.ESTATUS} onChange={handleChange} className="border rounded p-2">

@@ -221,6 +221,41 @@ export const contactos_ABC = async (CLIENTEID, CONTACTOID, NOMBRE, APATERNO, AMA
   }
 };
 
+export const getPuestos = async (DSC = "") => {
+  const token = localStorage.getItem("token");
+
+  try {
+    const response = await axios.post(
+      `${url}cn/puestos`,
+      { DESCRIPCION: DSC },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    const status = error?.response?.status;
+
+    if (status === 401) {
+      return await refreshToken(getPuestos, DSC);
+    }
+
+    if (status) {
+      const msg = error.response.data?.message || "Error al obtener los puestos";
+      throw new Error(msg);
+    }
+
+    if (error.request) {
+      throw new Error("No hay conexión con el servidor");
+    }
+
+    throw new Error("Ocurrió un error inesperado");
+  }
+};
+
 export const clientes_ABC = async (payload) => {
   const token = localStorage.getItem("token");
   try {

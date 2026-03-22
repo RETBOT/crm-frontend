@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiFileText, FiCalendar, FiDollarSign, FiCheckCircle, FiXCircle, FiPlus, FiMenu, FiChevronDown, FiChevronUp } from "react-icons/fi";
-import { getClientes, getContactos, getSucursales, getRutas, contactos_ABC, clientes_ABC } from "../../api/accounts";
+import { getClientes, getContactos, getSucursales, getRutas, getPuestos, contactos_ABC, clientes_ABC } from "../../api/accounts";
 import { ContactForm, CustomerForm, Notification } from "../../components/index";
 import { hasPermission } from "../../utils/auth";
 
@@ -23,6 +23,7 @@ export function Accounts() {
   const [accounts2, setAccounts2] = useState([]);
   const [sucursales, setSucursales] = useState([]);
   const [rutas, setRutas] = useState([]);
+  const [puestos, setPuestos] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [filters, setFilters] = useState({ searchTerm: "", status: "ACTIVO", sucursal: "", salesRep: "" });
@@ -50,7 +51,7 @@ export function Accounts() {
   useEffect(() => { setPage(1); fetchClientes(); }, [filters]);
   useEffect(() => { fetchClientes(); }, [page]);
   useEffect(() => { fetchRutas(); }, [filters.sucursal]);
-  useEffect(() => { fetchSucursales(); fetchRutas(); }, []);
+  useEffect(() => { fetchSucursales(); fetchRutas(); fetchPuestos(); }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -161,6 +162,17 @@ export function Accounts() {
     setSelectedAccount({ ...account, Contactos: [], Oportunidades: [], Actividades: [] });
     setActiveTab("Detalles");
     loadTabData(account, "Detalles");
+  };
+
+  const fetchPuestos = async () => {
+    try {
+      const res = await getPuestos("");
+      const puestosData = Array.isArray(res) ? res : (res.data || []);
+      setPuestos(puestosData);
+    } catch (e) {
+      console.error("Error al obtener los puestos: ", e);
+      setPuestos([]);
+    }
   };
 
   const handleCreateCustomer = async (customerData) => {
@@ -489,6 +501,7 @@ export function Accounts() {
           {showContactForm ? (
             <ContactForm
               initialData={editingContact || {}}
+              puestos={puestos}
               onSave={handleSaveContact}
               onCancel={() => {
                 setShowContactForm(false);

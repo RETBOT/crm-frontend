@@ -4,6 +4,7 @@ import { FiUser, FiPhone, FiMail, FiMessageSquare, FiX, FiSave } from "react-ico
 
 export const ContactForm = ({ 
   initialData = {}, 
+  puestos = [],
   onSave, 
   onCancel,
   isEditing 
@@ -100,8 +101,11 @@ export const ContactForm = ({
             onChange={handleChange}
           >
             <option value="">Seleccionar una opción</option>
-            <option value="03">COMPRAS</option>
-            <option value="04">PAGOS</option>
+            {puestos.map((puesto) => (
+              <option key={puesto.ID} value={puesto.ID}>
+                {puesto.DSC}
+              </option>
+            ))}
           </select>
 
 

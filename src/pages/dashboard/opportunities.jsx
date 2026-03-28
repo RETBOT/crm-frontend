@@ -1,124 +1,203 @@
-import React, { useState } from "react";
-import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiMail, FiFileText, FiCalendar, FiDollarSign, FiTrendingUp, FiCheckCircle,  FiCheck, FiX, FiXCircle, FiPlus } from "react-icons/fi";
-
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  FiSearch, FiUser, FiPhone, FiMail, FiFileText, FiCalendar,
+  FiDollarSign, FiTrendingUp, FiCheckCircle, FiCheck, FiX, FiXCircle, FiPlus,
+} from "react-icons/fi";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import {
+  getOpportunities, getOpportunityItems, getPipelines,
+  createOpportunity, updateOpportunity, advanceStage,
+  setOpportunityStatus, reopenOpportunity,
+} from "../../api/opportunities";
+import { getClientes, getContactos } from "../../api/accounts";
+import { getProducts } from "../../api/products";
+import { OpportunityForm, Notification } from "../../components";
+import { hasPermission } from "../../utils/auth";
 
-// Datos de ejemplo para oportunidades
-const initialOpportunities = [
-  {
-    id: 1,
-    name: "Pedido anual de película stretch",
-    account: "SUMITOMO ELECTRIC WIRING SYSTEMS, INC.",
-    contact: "FRANCISCO FAVELA",
-    stage: "negociacion",
-    amount: "$450,000",
-    closeDate: "2025-08-15",
-    probability: "75%",
-    description: "Suministro de película stretch para sus 3 plantas durante 1 año",
-    salesRep: "1 LAGUNA",
-    activities: [
-      { id: 1, type: "Llamada", date: "2025-07-10", notes: "Presentación de propuesta técnica" },
-      { id: 2, type: "Visita", date: "2025-07-18", notes: "Pruebas en planta" }
-    ],
-    documents: [
-      { name: "Cotización_SUMITOMO_2025.pdf", date: "2025-07-05" },
-      { name: "Especificaciones_Técnicas.docx", date: "2025-07-08" }
-    ]
-  },
-  {
-    id: 2,
-    name: "Flejadoras automáticas",
-    account: "WHIRLPOOL INTERNACIONAL",
-    contact: "LUISSANA MARROQUÍN",
-    stage: "propuesta",
-    amount: "$280,000",
-    closeDate: "2025-08-30",
-    probability: "50%",
-    description: "3 máquinas flejadoras para línea de empaque",
-    salesRep: "1 SALTILLO",
-    activities: [
-      { id: 3, type: "Reunión", date: "2025-07-05", notes: "Demostración de equipo" }
-    ],
-    documents: [
-      { name: "Catalogo_Flejadoras.pdf", date: "2025-07-01" }
-    ]
-  },
-  {
-    id: 3,
-    name: "Cartón corrugado personalizado",
-    account: "NIPPON STEEL PIPE MEXICO S.A DE C.V",
-    contact: "TAMARA BEJARANO",
-    stage: "contacto",
-    amount: "$120,000",
-    closeDate: "2025-09-10",
-    probability: "30%",
-    salesRep: "DISPONIBLE QUERETARO",
-    description: "Desarrollo de empaque especial para nuevo producto",
-    activities: [],
-    documents: []
-  },
-  {
-    id: 4,
-    name: "Contrato de suministro de cintas",
-    account: "BADAFI",
-    contact: "JESUS SANTIBANEZ",
-    stage: "cerrada",
-    amount: "$95,000",
-    closeDate: "2025-06-20",
-    probability: "100%",
-    status: "won",
-    salesRep: "3 MONTERREY",
-    description: "Suministro mensual de cintas adhesivas industriales",
-    activities: [
-      { id: 4, type: "Correo", date: "2025-06-18", notes: "Envío de contrato firmado" }
-    ],
-    documents: [
-      { name: "Contrato_BADAFI.pdf", date: "2025-06-15" }
-    ]
-  }
-];
-
-const stages = {
-  contacto: { name: "Contacto Inicial", color: "bg-blue-100 text-blue-800" },
-  cotizacion: { name: "Cotización", color: "bg-purple-100 text-purple-800" },
-  propuesta: { name: "Propuesta", color: "bg-yellow-100 text-yellow-800" },
-  negociacion: { name: "Negociación", color: "bg-orange-100 text-orange-800" },
-  cerrada: { name: "Cerrada", color: "bg-green-100 text-green-800" }
+const statusStyles = {
+  abierta: "bg-blue-100 text-blue-800",
+  ganada: "bg-green-100 text-green-800",
+  perdida: "bg-red-100 text-red-800",
 };
 
 export function Opportunities() {
-  const [opportunities, setOpportunities] = useState(initialOpportunities);
+  const [opportunities, setOpportunities] = useState([]);
+  const [pipelines, setPipelines] = useState([]);
   const [selectedOpp, setSelectedOpp] = useState(null);
-  const [viewMode, setViewMode] = useState("kanban"); // 'kanban' or 'list'
+  const [oppItems, setOppItems] = useState([]);
+  const [viewMode, setViewMode] = useState("kanban");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [editingOpp, setEditingOpp] = useState(null);
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
 
-  const filteredOpps = opportunities.filter(opp => 
-    opp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    opp.account.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(searchTerm), 400);
+    return () => window.clearTimeout(id);
+  }, [searchTerm]);
 
-  const opportunitiesByStage = {
-    contacto: filteredOpps.filter(opp => opp.stage === "contacto"),
-    cotizacion: filteredOpps.filter(opp => opp.stage === "cotizacion"),
-    propuesta: filteredOpps.filter(opp => opp.stage === "propuesta"),
-    negociacion: filteredOpps.filter(opp => opp.stage === "negociacion"),
-    cerrada: filteredOpps.filter(opp => opp.stage === "cerrada")
+  const showNotification = (msg, type = "success") => {
+    setNotification({ show: true, message: msg, type });
   };
 
-  const onDragEnd = (result) => {
-    if (!result.destination) return;
+  const loadData = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [oppRes, pipeRes, custRes, prodRes] = await Promise.all([
+        getOpportunities({ SEARCH: debouncedSearch, TPAG: 100 }),
+        getPipelines(),
+        getClientes(0, "", "", "ACTIVO", "", 1, 0, ""),
+        getProducts(),
+      ]);
+      setOpportunities(oppRes.data || []);
+      setPipelines(Array.isArray(pipeRes) ? pipeRes : []);
+      const custData = custRes.data || custRes;
+      setCustomers(Array.isArray(custData) ? custData : []);
+      setProducts(Array.isArray(prodRes) ? prodRes : []);
+    } catch (err) {
+      setError(err?.message || "Error al cargar oportunidades");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => { loadData(); }, [debouncedSearch]);
+
+  const loadItems = async (oppId) => {
+    try {
+      const items = await getOpportunityItems(oppId);
+      setOppItems(Array.isArray(items) ? items : []);
+    } catch { setOppItems([]); }
+  };
+
+  const loadContacts = async (customerId) => {
+    try {
+      const res = await getContactos(customerId);
+      setContacts(Array.isArray(res) ? res : []);
+    } catch { setContacts([]); }
+  };
+
+  const selectOpp = (opp) => {
+    setSelectedOpp(opp);
+    loadItems(opp.OPPORTUNITYID);
+    if (opp.CUSTOMER_ID) loadContacts(opp.CUSTOMER_ID);
+  };
+
+  const stageMap = useMemo(() => {
+    const map = {};
+    const colors = ["bg-blue-100 text-blue-800", "bg-purple-100 text-purple-800", "bg-yellow-100 text-yellow-800", "bg-orange-100 text-orange-800", "bg-teal-100 text-teal-800"];
+    const openStages = pipelines.filter((p) => !p.IS_CLOSED).sort((a, b) => a.STAGE_ORDER - b.STAGE_ORDER);
+    openStages.forEach((s, i) => {
+      map[s.ID] = { name: s.NAME, color: colors[i % colors.length], stage_order: s.STAGE_ORDER };
+    });
+    return map;
+  }, [pipelines]);
+
+  const stageIds = useMemo(() => Object.keys(stageMap).map(Number), [stageMap]);
+
+  const filteredOpps = opportunities.filter((opp) => {
+    if (!searchTerm) return true;
+    const s = searchTerm.toLowerCase();
+    return (opp.TITLE || "").toLowerCase().includes(s) || (opp.NOMBRECLI || "").toLowerCase().includes(s);
+  });
+
+  const opportunitiesByStage = useMemo(() => {
+    const grouped = {};
+    stageIds.forEach((id) => { grouped[id] = []; });
+    filteredOpps.forEach((opp) => {
+      if (grouped[opp.STAGE_ID]) grouped[opp.STAGE_ID].push(opp);
+    });
+    return grouped;
+  }, [filteredOpps, stageIds]);
+
+  const onDragEnd = async (result) => {
+    if (!result.destination) return;
     const { source, destination } = result;
     if (source.droppableId === destination.droppableId) return;
 
     const oppId = parseInt(result.draggableId);
-    const newStage = destination.droppableId;
+    const newStageId = parseInt(destination.droppableId);
 
-    setOpportunities(prev => 
-      prev.map(opp => 
-        opp.id === oppId ? { ...opp, stage: newStage } : opp
-      )
+    setOpportunities((prev) =>
+      prev.map((opp) => opp.OPPORTUNITYID === oppId ? { ...opp, STAGE_ID: newStageId } : opp)
     );
+
+    try {
+      await advanceStage(oppId, newStageId);
+      showNotification("Etapa actualizada");
+    } catch (err) {
+      showNotification(err?.message || "Error al cambiar etapa", "error");
+      loadData();
+    }
+  };
+
+  const handleCreate = async (payload) => {
+    await createOpportunity(payload);
+    setShowForm(false);
+    showNotification("Oportunidad creada correctamente");
+    loadData();
+  };
+
+  const handleUpdate = async (payload) => {
+    await updateOpportunity(payload);
+    setEditingOpp(null);
+    showNotification("Oportunidad actualizada correctamente");
+    loadData();
+  };
+
+  const handleAdvanceStage = async () => {
+    if (!selectedOpp) return;
+    const currentOrder = selectedOpp.STAGE_ORDER || 0;
+    const nextStage = pipelines
+      .filter((p) => !p.IS_CLOSED && p.STAGE_ORDER > currentOrder)
+      .sort((a, b) => a.STAGE_ORDER - b.STAGE_ORDER)[0];
+    if (!nextStage) { showNotification("Ya esta en la ultima etapa", "error"); return; }
+    try {
+      await advanceStage(selectedOpp.OPPORTUNITYID, nextStage.ID);
+      showNotification("Etapa avanzada");
+      loadData();
+      setSelectedOpp(null);
+    } catch (err) { showNotification(err?.message, "error"); }
+  };
+
+  const handleSetStatus = async (status) => {
+    if (!selectedOpp) return;
+    const reason = status === "perdida" ? window.prompt("Razon de la perdida:") : "";
+    if (status === "perdida" && reason === null) return;
+    try {
+      await setOpportunityStatus(selectedOpp.OPPORTUNITYID, status, reason || "");
+      showNotification(status === "ganada" ? "Oportunidad ganada!" : "Oportunidad marcada como perdida");
+      loadData();
+      setSelectedOpp(null);
+    } catch (err) { showNotification(err?.message, "error"); }
+  };
+
+  const handleReopen = async () => {
+    if (!selectedOpp) return;
+    try {
+      await reopenOpportunity(selectedOpp.OPPORTURITYID || selectedOpp.OPPORTUNITYID);
+      showNotification("Oportunidad reabierta");
+      loadData();
+      setSelectedOpp(null);
+    } catch (err) { showNotification(err?.message, "error"); }
+  };
+
+  const formatAmount = (amount) => {
+    if (!amount) return "$0";
+    return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount);
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    try { return new Date(dateStr).toLocaleDateString("es-MX", { year: "numeric", month: "short", day: "numeric" }); }
+    catch { return dateStr; }
   };
 
   return (
@@ -126,40 +205,46 @@ export function Opportunities() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Oportunidades / Ventas</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Oportunidades</h1>
             <p className="text-gray-600">Seguimiento de oportunidades comerciales</p>
           </div>
           <div className="flex space-x-3">
-            <button 
-              className={`px-4 py-2 rounded-lg ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-              onClick={() => setViewMode('list')}
-            >
-              Vista de Lista
-            </button>
-            <button 
-              className={`px-4 py-2 rounded-lg ${viewMode === 'kanban' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-              onClick={() => setViewMode('kanban')}
-            >
-              Vista Kanban
-            </button>
-            <button className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-              <FiPlus className="mr-1" /> Nueva Oportunidad
-            </button>
+            <button className={`px-4 py-2 rounded-lg ${viewMode === "list" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setViewMode("list")}>Lista</button>
+            <button className={`px-4 py-2 rounded-lg ${viewMode === "kanban" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setViewMode("kanban")}>Kanban</button>
+            {hasPermission("customers.create") && (
+              <button className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" onClick={() => { setShowForm(true); setEditingOpp(null); setSelectedOpp(null); }}>
+                <FiPlus className="mr-1" /> Nueva Oportunidad
+              </button>
+            )}
           </div>
         </div>
 
         <div className="mb-6 relative max-w-md">
           <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar oportunidades por nombre o cliente..."
-            className="pl-10 pr-4 py-2 w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <input type="text" placeholder="Buscar por titulo o cliente..." className="pl-10 pr-4 py-2 w-full border rounded-lg" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
 
-        {viewMode === 'list' ? (
+        {notification.show && <Notification message={notification.message} type={notification.type} onClose={() => setNotification({ ...notification, show: false })} />}
+
+        {showForm && (
+          <OpportunityForm
+            title={editingOpp ? "Editar Oportunidad" : "Nueva Oportunidad"}
+            initialData={editingOpp}
+            customerList={customers}
+            contactList={contacts}
+            products={products}
+            pipelines={pipelines}
+            submitLabel={editingOpp ? "Actualizar" : "Crear"}
+            onSave={editingOpp ? handleUpdate : handleCreate}
+            onCancel={() => { setShowForm(false); setEditingOpp(null); }}
+          />
+        )}
+
+        {error && !loading && <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+
+        {loading ? (
+          <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>
+        ) : viewMode === "list" ? (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <table className="w-full">
               <thead className="bg-gray-100 text-left">
@@ -168,37 +253,25 @@ export function Opportunities() {
                   <th className="px-4 py-3">Cliente</th>
                   <th className="px-4 py-3">Etapa</th>
                   <th className="px-4 py-3">Valor</th>
-                  <th className="px-4 py-3">Fecha Cierre</th>
+                  <th className="px-4 py-3">Cierre</th>
                   <th className="px-4 py-3">Probabilidad</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredOpps.map((opp) => (
-                  <tr 
-                    key={opp.id} 
-                    className="border-t hover:bg-blue-50 cursor-pointer"
-                    onClick={() => setSelectedOpp(opp)}
-                  >
-                    <td className="px-4 py-3 font-medium">{opp.name}</td>
+                  <tr key={opp.OPPORTUNITYID} className="border-t hover:bg-blue-50 cursor-pointer" onClick={() => selectOpp(opp)}>
+                    <td className="px-4 py-3 font-medium">{opp.TITLE}</td>
+                    <td className="px-4 py-3"><div className="font-medium">{opp.NOMBRECLI}</div><div className="text-sm text-gray-500">{opp.CONTACT_NAME}</div></td>
                     <td className="px-4 py-3">
-                      <div className="font-medium">{opp.account}</div>
-                      <div className="text-sm text-gray-500">{opp.contact}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${stages[opp.stage].color}`}>
-                        {stages[opp.stage].name}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[opp.STATUS] || (stageMap[opp.STAGE_ID]?.color || "bg-gray-100")}`}>
+                        {opp.STATUS === "abierta" ? (stageMap[opp.STAGE_ID]?.NAME || "N/A") : opp.STATUS}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-medium">{opp.amount}</td>
-                    <td className="px-4 py-3">{opp.closeDate}</td>
+                    <td className="px-4 py-3 font-medium">{formatAmount(opp.AMOUNT)}</td>
+                    <td className="px-4 py-3">{formatDate(opp.CLOSE_DATE)}</td>
                     <td className="px-4 py-3">
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div 
-                          className="bg-blue-600 h-2.5 rounded-full" 
-                          style={{ width: opp.probability }}
-                        ></div>
-                      </div>
-                      <span className="text-sm text-gray-500">{opp.probability}</span>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${opp.PROBABILITY || 0}%` }}></div></div>
+                      <span className="text-sm text-gray-500">{opp.PROBABILITY || 0}%</span>
                     </td>
                   </tr>
                 ))}
@@ -208,192 +281,114 @@ export function Opportunities() {
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-              {Object.entries(stages).map(([stageId, stage]) => (
-                <Droppable key={stageId} droppableId={stageId}>
-                  {(provided) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className="bg-gray-100 rounded-lg p-4"
-                    >
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="font-medium">{stage.name}</h3>
-                        <span className="bg-white px-2 py-1 rounded-full text-xs">
-                          {opportunitiesByStage[stageId].length}
-                        </span>
-                      </div>
-                      <div className="space-y-3">
-                        {opportunitiesByStage[stageId].map((opp, index) => (
-                          <Draggable key={opp.id} draggableId={opp.id.toString()} index={index}>
-                            {(provided) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className="bg-white p-3 rounded-lg shadow-sm hover:shadow-md cursor-pointer"
-                                onClick={() => setSelectedOpp(opp)}
-                              >
-                                <div className="font-medium mb-1">{opp.name}</div>
-                                <div className="text-sm text-gray-500 mb-1">{opp.account}</div>
-                                <div className="flex justify-between items-center">
-                                  <span className="font-bold text-blue-600">{opp.amount}</span>
-                                  <span className="text-xs text-gray-500">{opp.closeDate}</span>
+              {stageIds.map((stageId) => {
+                const stage = stageMap[stageId];
+                return (
+                  <Droppable key={stageId} droppableId={String(stageId)}>
+                    {(provided) => (
+                      <div ref={provided.innerRef} {...provided.droppableProps} className="bg-gray-100 rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <h3 className="font-medium text-sm">{stage.name}</h3>
+                          <span className="bg-white px-2 py-1 rounded-full text-xs">{opportunitiesByStage[stageId]?.length || 0}</span>
+                        </div>
+                        <div className="space-y-3 min-h-[100px]">
+                          {(opportunitiesByStage[stageId] || []).map((opp, index) => (
+                            <Draggable key={opp.OPPORTUNITYID} draggableId={String(opp.OPPORTUNITYID)} index={index}>
+                              {(provided) => (
+                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
+                                  className="bg-white p-3 rounded-lg shadow-sm hover:shadow-md cursor-pointer" onClick={() => selectOpp(opp)}>
+                                  <div className="font-medium text-sm mb-1">{opp.TITLE}</div>
+                                  <div className="text-xs text-gray-500 mb-1">{opp.NOMBRECLI}</div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-bold text-blue-600 text-sm">{formatAmount(opp.AMOUNT)}</span>
+                                    <span className="text-xs text-gray-500">{formatDate(opp.CLOSE_DATE)}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
+                              )}
+                            </Draggable>
+                          ))}
+                        </div>
+                        {provided.placeholder}
                       </div>
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              ))}
+                    )}
+                  </Droppable>
+                );
+              })}
             </div>
           </DragDropContext>
         )}
 
-        {selectedOpp && (
+        {selectedOpp && !showForm && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-800">
-                Detalle de Oportunidad
-              </h2>
-              <button 
-                className="text-gray-500 hover:text-gray-700"
-                onClick={() => setSelectedOpp(null)}
-              >
-                Cerrar
-              </button>
+              <h2 className="text-xl font-bold text-gray-800">Detalle de Oportunidad</h2>
+              <button className="text-gray-500 hover:text-gray-700" onClick={() => setSelectedOpp(null)}>Cerrar</button>
             </div>
-            
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div className="md:col-span-2">
-                  <h3 className="text-lg font-semibold mb-2">{selectedOpp.name}</h3>
-                  <p className="text-gray-600 mb-4">{selectedOpp.description}</p>
-                  
+                  <h3 className="text-lg font-semibold mb-2">{selectedOpp.TITLE}</h3>
+                  <p className="text-gray-600 mb-4">{selectedOpp.DESCRIPTION}</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Cliente</label>
-                      <p className="mt-1 font-medium">{selectedOpp.account}</p>
-                      <p className="text-sm text-gray-500">{selectedOpp.contact}</p>
-                    </div>
+                    <div><label className="block text-sm font-medium text-gray-500">Cliente</label><p className="mt-1 font-medium">{selectedOpp.NOMBRECLI}</p></div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Etapa</label>
                       <p className="mt-1">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${stages[selectedOpp.stage].color}`}>
-                          {stages[selectedOpp.stage].name}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[selectedOpp.STATUS] || (stageMap[selectedOpp.STAGE_ID]?.color || "bg-gray-100")}`}>
+                          {selectedOpp.STATUS === "abierta" ? (stageMap[selectedOpp.STAGE_ID]?.NAME || "N/A") : selectedOpp.STATUS}
                         </span>
                       </p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Valor Estimado</label>
-                      <p className="mt-1 font-medium text-xl">{selectedOpp.amount}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Fecha de Cierre</label>
-                      <p className="mt-1 font-medium">{selectedOpp.closeDate}</p>
-                    </div>
+                    <div><label className="block text-sm font-medium text-gray-500">Valor Estimado</label><p className="mt-1 font-medium text-xl">{formatAmount(selectedOpp.AMOUNT)}</p></div>
+                    <div><label className="block text-sm font-medium text-gray-500">Fecha de Cierre</label><p className="mt-1 font-medium">{formatDate(selectedOpp.CLOSE_DATE)}</p></div>
                   </div>
                 </div>
-                
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium mb-3">Probabilidad de Cierre</h4>
-                  <div className="mb-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div 
-                        className="bg-blue-600 h-2.5 rounded-full" 
-                        style={{ width: selectedOpp.probability }}
-                      ></div>
-                    </div>
-                    <div className="text-right text-sm font-medium mt-1">{selectedOpp.probability}</div>
-                  </div>
-                  
-                  {selectedOpp.stage === "cerrada" && (
-                    <div className={`mt-4 p-3 rounded-lg ${selectedOpp.status === "won" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                  <h4 className="font-medium mb-3">Probabilidad</h4>
+                  <div className="w-full bg-gray-200 rounded-full h-3 mb-2"><div className="bg-blue-600 h-3 rounded-full" style={{ width: `${selectedOpp.PROBABILITY || 0}%` }}></div></div>
+                  <div className="text-right text-lg font-bold">{selectedOpp.PROBABILITY || 0}%</div>
+                  {selectedOpp.STATUS !== "abierta" && (
+                    <div className={`mt-4 p-3 rounded-lg ${selectedOpp.STATUS === "ganada" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                       <div className="flex items-center font-medium">
-                        {selectedOpp.status === "won" ? (
-                          <>
-                            <FiCheck className="mr-1" /> Ganada
-                          </>
-                        ) : (
-                          <>
-                            <FiX className="mr-1" /> Perdida
-                          </>
-                        )}
+                        {selectedOpp.STATUS === "ganada" ? <><FiCheck className="mr-1" /> Ganada</> : <><FiX className="mr-1" /> Perdida</>}
                       </div>
+                      {selectedOpp.LOST_REASON && <p className="text-sm mt-1">{selectedOpp.LOST_REASON}</p>}
                     </div>
                   )}
                 </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 flex items-center">
-                    <FiTrendingUp className="mr-2" /> Actividades
-                  </h3>
-                  {selectedOpp.activities.length > 0 ? (
-                    <div className="space-y-3">
-                      {selectedOpp.activities.map(act => (
-                        <div key={act.id} className="border-l-2 border-blue-500 pl-3 py-1">
-                          <div className="flex justify-between">
-                            <div className="font-medium">{act.type}</div>
-                            <div className="text-sm text-gray-500">{act.date}</div>
-                          </div>
-                          <p className="text-sm text-gray-700">{act.notes}</p>
-                        </div>
+
+              {oppItems.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3">Productos / Items</h3>
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50"><tr><th className="text-left p-2">Producto</th><th className="text-right p-2">Cant</th><th className="text-right p-2">Precio</th><th className="text-right p-2">Desc</th><th className="text-right p-2">Total</th></tr></thead>
+                    <tbody>
+                      {oppItems.map((item) => (
+                        <tr key={item.ITEM_ID} className="border-t">
+                          <td className="p-2">{item.PRODUCT_NAME || item.ITEM_DESCRIPTION}</td>
+                          <td className="p-2 text-right">{item.QUANTITY}</td>
+                          <td className="p-2 text-right">{formatAmount(item.UNIT_PRICE)}</td>
+                          <td className="p-2 text-right">{item.DISCOUNT_PCT}%</td>
+                          <td className="p-2 text-right font-medium">{formatAmount(item.LINE_TOTAL)}</td>
+                        </tr>
                       ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500">No hay actividades registradas</p>
-                  )}
-                  <button className="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium">
-                    + Agregar actividad
-                  </button>
+                    </tbody>
+                  </table>
                 </div>
-                
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 flex items-center">
-                    <FiFileText className="mr-2" /> Documentos
-                  </h3>
-                  {selectedOpp.documents.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedOpp.documents.map((doc, idx) => (
-                        <div key={idx} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
-                          <div className="flex items-center">
-                            <FiFileText className="mr-2 text-gray-400" />
-                            <span>{doc.name}</span>
-                          </div>
-                          <div className="text-sm text-gray-500">{doc.date}</div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500">No hay documentos adjuntos</p>
-                  )}
-                  <button className="mt-3 text-blue-600 hover:text-blue-800 text-sm font-medium">
-                    + Subir documento
-                  </button>
-                </div>
-              </div>
-              
+              )}
+
               <div className="flex justify-end space-x-3">
-                <button className="px-4 py-2 border rounded-lg hover:bg-gray-50">
-                  Editar
-                </button>
-                {selectedOpp.stage !== "cerrada" && (
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Avanzar Etapa
-                  </button>
+                {selectedOpp.STATUS === "abierta" && (
+                  <>
+                    <button className="px-4 py-2 border rounded-lg hover:bg-gray-50" onClick={() => { setEditingOpp(selectedOpp); setShowForm(true); setSelectedOpp(null); loadContacts(selectedOpp.CUSTOMER_ID); }}>Editar</button>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onClick={handleAdvanceStage}>Avanzar Etapa</button>
+                    <button className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50" onClick={() => handleSetStatus("perdida")}>Marcar Perdida</button>
+                    <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" onClick={() => handleSetStatus("ganada")}>Marcar Ganada</button>
+                  </>
                 )}
-                <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                  {selectedOpp.stage === "cerrada" ? "Reabrir" : "Marcar como Perdida"}
-                </button>
-                {selectedOpp.stage !== "cerrada" && (
-                  <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    Marcar como Ganada
-                  </button>
+                {selectedOpp.STATUS !== "abierta" && (
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onClick={handleReopen}>Reabrir</button>
                 )}
               </div>
             </div>

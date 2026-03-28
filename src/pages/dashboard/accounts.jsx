@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiFileText, FiCalendar, FiDollarSign, FiCheckCircle, FiXCircle, FiPlus, FiMenu, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { getClientes, getContactos, getSucursales, getRutas, getPuestos, contactos_ABC, clientes_ABC } from "../../api/accounts";
+import { getOpportunitiesByCustomer } from "../../api/opportunities";
 import { ContactForm, CustomerForm, ActivityList, Notification } from "../../components/index";
 import { hasPermission } from "../../utils/auth";
-
-function getOportunidades(clienteid) {
-  return [
-    { id: 101, name: "Venta de Equipos", value: "$25,000", stage: "Propuesta", closeDate: "2023-06-30" },
-    { id: 102, name: "Servicios Adicionales", value: "$8,500", stage: "Descubrimiento", closeDate: "2023-07-15" }
-  ];
-}
 
 function getTareas(clienteid) {
   return [
@@ -148,7 +142,7 @@ export function Accounts() {
     try {
       let data;
       if (tab === "Contactos") data = await fetchContactos(cliente.CLIENTEID);
-      if (tab === "Oportunidades") data = getOportunidades(cliente.CLIENTEID);
+      if (tab === "Oportunidades") data = await getOpportunitiesByCustomer(cliente.customer_id || cliente.CLIENTEID);
       if (tab !== "Actividades") setSelectedAccount(prev => ({ ...prev, [tab]: data }));
     } catch (e) { 
       console.error(e); 
@@ -611,21 +605,27 @@ export function Accounts() {
           <div className="p-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Oportunidades</h3>
-              <button className="flex items-center bg-blue-600 text-white px-3 py-2 rounded text-sm">
-                <FiPlus className="mr-1"/>Nueva
-              </button>
             </div>
-            {acc.opportunities?.length > 0 ? acc.opportunities.map((o, idx) => (
-              <div key={idx} className="border rounded p-3 mb-2">
+            {acc.Oportunidades?.length > 0 ? acc.Oportunidades.map((o) => (
+              <div key={o.OPPORTUNITYID} className="border rounded p-3 mb-2">
                 <div className="flex justify-between items-center">
                   <span className="font-medium flex items-center">
-                    <FiDollarSign className="mr-1"/> {o.name}
+                    <FiDollarSign className="mr-1" /> {o.TITLE}
                   </span>
-                  <span>{o.value}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    o.STATUS === "ganada" ? "bg-green-100 text-green-800" :
+                    o.STATUS === "perdida" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
+                  }`}>
+                    {o.STATUS === "abierta" ? (o.STAGE_NAME || "Abierta") : o.STATUS}
+                  </span>
                 </div>
                 <div className="mt-2 text-sm flex flex-col sm:flex-row sm:space-x-4">
-                  <span>Etapa: {o.stage}</span>
-                  <span>Cierre: {o.closeDate}</span>
+                  <span className="font-medium text-blue-600">
+                    {o.AMOUNT ? new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(o.AMOUNT) : "$0"}
+                  </span>
+                  <span>Etapa: {o.STAGE_NAME || "N/A"}</span>
+                  <span>Probabilidad: {o.PROBABILITY || 0}%</span>
+                  <span>Cierre: {o.CLOSE_DATE ? new Date(o.CLOSE_DATE).toLocaleDateString("es-MX") : "N/A"}</span>
                 </div>
               </div>
             )) : <EmptyState message="No hay oportunidades registradas" />}

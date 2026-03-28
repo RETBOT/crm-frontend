@@ -6,7 +6,7 @@ export * from "@/pages/dashboard/opportunities";
 export * from "@/pages/dashboard/reports";
 export * from "@/pages/dashboard/maps"
 export * from "@/pages/dashboard/prospects";
-export * from "@/pages/dashboard/admin-users-roles";
+export * from "@/pages/dashboard/admin";
 
 
 // export * from "@/pages/dashboard/profile";

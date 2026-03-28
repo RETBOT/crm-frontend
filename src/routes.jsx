@@ -9,7 +9,7 @@ import {
   Cog6ToothIcon,
 
 } from "@heroicons/react/24/solid";
-import { Home, Accounts, Prospects, Activities, Contacts, Opportunities, Reports, Maps, AdminUsersRoles } from "@/pages/dashboard";
+import { Home, Accounts, Prospects, Activities, Contacts, Opportunities, Reports, Maps, Admin } from "@/pages/dashboard";
 import { SignIn, SignUp, ForgotPassword } from "@/pages/auth";
 
 
@@ -78,9 +78,9 @@ export const rSidenavoutes = [
       },
       {
         icon: <Cog6ToothIcon {...icon} />,
-        name: "Admin usuarios/roles",
-        path: "/admin-users-roles",
-        element: <AdminUsersRoles />,
+        name: "Administracion",
+        path: "/admin",
+        element: <Admin />,
         requiredPermissions: ["users.manage", "roles.manage", "scope.manage"],
       },
     ],
@@ -148,9 +148,9 @@ export const routes = [
       },
       {
         icon: <InformationCircleIcon {...icon} />,
-        name: "admin-users-roles",
-        path: "/admin-users-roles",
-        element: <AdminUsersRoles />,
+        name: "admin",
+        path: "/admin",
+        element: <Admin />,
         requiredPermissions: ["users.manage", "roles.manage", "scope.manage"],
       },
       // {

@@ -63,19 +63,12 @@ export function Admin() {
   }, []);
 
   const usersWithRoles = useMemo(() => {
-    const roleMap = {};
-    roles.forEach((r) => {
-      (r.user_ids || []).forEach((uid) => {
-        if (!roleMap[uid]) roleMap[uid] = [];
-        roleMap[uid].push(r.role_name);
-      });
-    });
     return users.map((u) => ({
       ...u,
-      role_names: roleMap[u.user_id] || [],
-      role_ids: roles.filter((r) => (r.user_ids || []).includes(u.user_id)).map((r) => r.role_id),
+      role_names: (u.roles || []).map((r) => r.role_name),
+      role_ids: (u.roles || []).map((r) => r.role_id),
     }));
-  }, [users, roles]);
+  }, [users]);
 
   if (!canManageUsers && !canManageRoles && !canManageScope) {
     return (

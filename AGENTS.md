@@ -95,3 +95,20 @@ Cuando termines una feature:
 3. Actualiza `CHANGELOG.md` con las entradas correspondientes
 4. Actualiza `README.md` si hay nuevas secciones o tablas
 5. Commitea todo junto con mensaje descriptivo
+
+## Flujo de git
+
+### Commits
+- Commitear despues de cada cambio logico (feature, fix, refactor)
+- Mensaje descriptivo en inglés con prefijo: feat, fix, docs, refactor
+- Actualizar CHANGELOG.md antes de commitear
+
+### Push
+- NO hacer push automatico despues de cada commit
+- Solo hacer push cuando el usuario lo pida explicitamente con las palabras "commit y push" o "push"
+- Si el usuario dice "commitea" o "documenta", solo commit sin push
+
+### Ejemplo
+- "arregla el bug de contactos" → commit local, sin push
+- "agrega reportes" → commit local, sin push
+- "commit y push" → push todos los pendientes en ambos proyectos

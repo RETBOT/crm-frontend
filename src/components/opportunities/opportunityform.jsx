@@ -136,30 +136,51 @@ export const OpportunityForm = ({
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {needsCustomerSelector && (
-            <select name="CUSTOMER_ID" value={formData.CUSTOMER_ID} onChange={handleChange} className="border rounded p-2" required>
-              <option value="">Selecciona cliente</option>
-              {customerList.map((c) => (
-                <option key={c.CLIENTEID || c.customer_id} value={c.customer_id || c.CLIENTEID}>
-                  {c.NOMBRECLI || c.customer_name}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+              <select name="CUSTOMER_ID" value={formData.CUSTOMER_ID} onChange={handleChange} className="border rounded p-2 w-full" required>
+                <option value="">Selecciona cliente</option>
+                {customerList.map((c) => (
+                  <option key={c.CLIENTEID || c.customer_id} value={c.customer_id || c.CLIENTEID}>
+                    {c.NOMBRECLI || c.customer_name}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
-          <input name="TITLE" value={formData.TITLE} onChange={handleChange} className="border rounded p-2" placeholder="Titulo" required />
-          <input name="AMOUNT" type="number" step="0.01" value={formData.AMOUNT} onChange={handleChange} className="border rounded p-2" placeholder="Monto estimado" />
-          <input name="CLOSE_DATE" type="date" value={formData.CLOSE_DATE} onChange={handleChange} className="border rounded p-2" />
-          <input name="PROBABILITY" type="number" min="0" max="100" value={formData.PROBABILITY} onChange={handleChange} className="border rounded p-2" placeholder="Probabilidad %" />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Titulo de la oportunidad</label>
+            <input name="TITLE" value={formData.TITLE} onChange={handleChange} className="border rounded p-2 w-full" placeholder="Ej: Venta de equipos industriales" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Monto estimado ($)</label>
+            <input name="AMOUNT" type="number" step="0.01" value={formData.AMOUNT} onChange={handleChange} className="border rounded p-2 w-full" placeholder="Ej: 25000" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de cierre estimada</label>
+            <input name="CLOSE_DATE" type="date" value={formData.CLOSE_DATE} onChange={handleChange} className="border rounded p-2 w-full" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Probabilidad (%)</label>
+            <input name="PROBABILITY" type="number" min="0" max="100" value={formData.PROBABILITY} onChange={handleChange} className="border rounded p-2 w-full" placeholder="Ej: 50" />
+          </div>
           {contactList.length > 0 && (
-            <select name="CONTACT_ID" value={formData.CONTACT_ID} onChange={handleChange} className="border rounded p-2">
-              <option value="">Sin contacto</option>
-              {contactList.map((c) => (
-                <option key={c.ID} value={c.ID}>{c.NOMBRE} {c.APATERNO}</option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contacto</label>
+              <select name="CONTACT_ID" value={formData.CONTACT_ID} onChange={handleChange} className="border rounded p-2 w-full">
+                <option value="">Sin contacto</option>
+                {contactList.map((c) => (
+                  <option key={c.ID} value={c.ID}>{c.NOMBRE} {c.APATERNO}</option>
+                ))}
+              </select>
+            </div>
           )}
-          <textarea name="DESCRIPTION" value={formData.DESCRIPTION} onChange={handleChange} className="border rounded p-2 md:col-span-2" placeholder="Descripcion" rows={2} />
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
+            <textarea name="DESCRIPTION" value={formData.DESCRIPTION} onChange={handleChange} className="border rounded p-2 w-full" placeholder="Detalles de la oportunidad..." rows={2} />
+          </div>
         </div>
 
         <div className="mb-4">

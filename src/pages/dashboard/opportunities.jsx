@@ -92,15 +92,29 @@ export function Opportunities() {
 
   const stageMap = useMemo(() => {
     const map = {};
-    const colors = ["bg-blue-100 text-blue-800", "bg-purple-100 text-purple-800", "bg-yellow-100 text-yellow-800", "bg-orange-100 text-orange-800", "bg-teal-100 text-teal-800"];
-    const openStages = pipelines.filter((p) => !p.IS_CLOSED).sort((a, b) => a.STAGE_ORDER - b.STAGE_ORDER);
-    openStages.forEach((s, i) => {
-      map[s.ID] = { name: s.NAME, color: colors[i % colors.length], stage_order: s.STAGE_ORDER };
+    const colors = {
+      open: ["bg-blue-100 text-blue-800", "bg-purple-100 text-purple-800", "bg-yellow-100 text-yellow-800", "bg-orange-100 text-orange-800", "bg-teal-100 text-teal-800"],
+      closed: { ganada: "bg-green-100 text-green-800", perdida: "bg-red-100 text-red-800" },
+    };
+    let openIndex = 0;
+    pipelines.sort((a, b) => a.STAGE_ORDER - b.STAGE_ORDER).forEach((s) => {
+      if (s.IS_CLOSED) {
+        map[s.ID] = {
+          name: s.IS_WON ? "Cerrada Ganada" : "Cerrada Perdida",
+          color: s.IS_WON ? colors.closed.ganada : colors.closed.perdida,
+          stage_order: s.STAGE_ORDER,
+          is_closed: true,
+          is_won: s.IS_WON,
+        };
+      } else {
+        map[s.ID] = { name: s.NAME, color: colors.open[openIndex % colors.open.length], stage_order: s.STAGE_ORDER, is_closed: false };
+        openIndex++;
+      }
     });
     return map;
   }, [pipelines]);
 
-  const stageIds = useMemo(() => Object.keys(stageMap).map(Number), [stageMap]);
+  const openStageIds = useMemo(() => Object.keys(stageMap).map(Number).filter((id) => !stageMap[id]?.is_closed), [stageMap]);
 
   const filteredOpps = opportunities.filter((opp) => {
     if (!searchTerm) return true;
@@ -110,12 +124,12 @@ export function Opportunities() {
 
   const opportunitiesByStage = useMemo(() => {
     const grouped = {};
-    stageIds.forEach((id) => { grouped[id] = []; });
+    openStageIds.forEach((id) => { grouped[id] = []; });
     filteredOpps.forEach((opp) => {
       if (grouped[opp.STAGE_ID]) grouped[opp.STAGE_ID].push(opp);
     });
     return grouped;
-  }, [filteredOpps, stageIds]);
+  }, [filteredOpps, openStageIds]);
 
   const onDragEnd = async (result) => {
     if (!result.destination) return;
@@ -264,7 +278,9 @@ export function Opportunities() {
                     <td className="px-4 py-3"><div className="font-medium">{opp.NOMBRECLI}</div><div className="text-sm text-gray-500">{opp.CONTACT_NAME}</div></td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[opp.STATUS] || (stageMap[opp.STAGE_ID]?.color || "bg-gray-100")}`}>
-                        {opp.STATUS === "abierta" ? (stageMap[opp.STAGE_ID]?.NAME || "N/A") : opp.STATUS}
+                        {opp.STATUS === "abierta"
+                          ? (stageMap[opp.STAGE_ID]?.NAME || opp.STAGE_NAME || "Abierta")
+                          : opp.STATUS === "ganada" ? "Ganada" : "Perdida"}
                       </span>
                     </td>
                     <td className="px-4 py-3 font-medium">{formatAmount(opp.AMOUNT)}</td>
@@ -281,7 +297,7 @@ export function Opportunities() {
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-              {stageIds.map((stageId) => {
+              {openStageIds.map((stageId) => {
                 const stage = stageMap[stageId];
                 return (
                   <Droppable key={stageId} droppableId={String(stageId)}>
@@ -335,7 +351,9 @@ export function Opportunities() {
                       <label className="block text-sm font-medium text-gray-500">Etapa</label>
                       <p className="mt-1">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[selectedOpp.STATUS] || (stageMap[selectedOpp.STAGE_ID]?.color || "bg-gray-100")}`}>
-                          {selectedOpp.STATUS === "abierta" ? (stageMap[selectedOpp.STAGE_ID]?.NAME || "N/A") : selectedOpp.STATUS}
+                          {selectedOpp.STATUS === "abierta"
+                            ? (stageMap[selectedOpp.STAGE_ID]?.NAME || selectedOpp.STAGE_NAME || "Abierta")
+                            : selectedOpp.STATUS === "ganada" ? "Ganada" : "Perdida"}
                         </span>
                       </p>
                     </div>

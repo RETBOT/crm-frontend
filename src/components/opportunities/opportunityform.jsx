@@ -34,7 +34,6 @@ export const OpportunityForm = ({
       ITEM_DESCRIPTION: item.ITEM_DESCRIPTION || "",
       QUANTITY: item.QUANTITY || 1,
       UNIT_PRICE: item.UNIT_PRICE || 0,
-      DISCOUNT_PCT: item.DISCOUNT_PCT || 0,
     })) || []
   );
 
@@ -71,7 +70,7 @@ export const OpportunityForm = ({
   const addItem = () => {
     setItems((prev) => [
       ...prev,
-      { PRODUCT_ID: "", ITEM_DESCRIPTION: "", QUANTITY: 1, UNIT_PRICE: 0, DISCOUNT_PCT: 0 },
+      { PRODUCT_ID: "", ITEM_DESCRIPTION: "", QUANTITY: 1, UNIT_PRICE: 0 },
     ]);
   };
 
@@ -108,7 +107,7 @@ export const OpportunityForm = ({
             ITEM_DESCRIPTION: item.ITEM_DESCRIPTION,
             QUANTITY: Number(item.QUANTITY) || 1,
             UNIT_PRICE: Number(item.UNIT_PRICE) || 0,
-            DISCOUNT_PCT: Number(item.DISCOUNT_PCT) || 0,
+            DISCOUNT_PCT: 0,
           })),
       };
 
@@ -184,39 +183,92 @@ export const OpportunityForm = ({
         </div>
 
         <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">Productos / Items</span>
-            <button type="button" className="text-blue-600 text-sm flex items-center" onClick={addItem}>
-              <FiPlus className="mr-1" /> Agregar
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-gray-700">Productos de la oportunidad</span>
+            <button type="button" className="flex items-center text-blue-600 text-sm hover:text-blue-800" onClick={addItem}>
+              <FiPlus className="mr-1" /> Agregar producto
             </button>
           </div>
+
           {items.length === 0 && (
-            <p className="text-xs text-gray-400 mb-2">Sin items. Haz click en "Agregar" para anadir productos.</p>
-          )}
-          {items.map((item, index) => (
-            <div key={index} className="grid grid-cols-12 gap-2 mb-2 items-center">
-              <select
-                className="col-span-3 border rounded p-1.5 text-sm"
-                value={item.PRODUCT_ID}
-                onChange={(e) => handleProductSelect(index, e.target.value)}
-              >
-                <option value="">Producto</option>
-                {products.map((p) => (
-                  <option key={p.ID} value={p.ID}>{p.SKU} - {p.NAME}</option>
-                ))}
-              </select>
-              <input className="col-span-3 border rounded p-1.5 text-sm" placeholder="Descripcion" value={item.ITEM_DESCRIPTION} onChange={(e) => handleItemChange(index, "ITEM_DESCRIPTION", e.target.value)} />
-              <input className="col-span-1 border rounded p-1.5 text-sm" type="number" min="1" value={item.QUANTITY} onChange={(e) => handleItemChange(index, "QUANTITY", e.target.value)} placeholder="Cant" />
-              <input className="col-span-2 border rounded p-1.5 text-sm" type="number" step="0.01" value={item.UNIT_PRICE} onChange={(e) => handleItemChange(index, "UNIT_PRICE", e.target.value)} placeholder="Precio" />
-              <input className="col-span-1 border rounded p-1.5 text-sm" type="number" min="0" max="100" value={item.DISCOUNT_PCT} onChange={(e) => handleItemChange(index, "DISCOUNT_PCT", e.target.value)} placeholder="Desc%" />
-              <button type="button" className="col-span-1 text-red-500 hover:text-red-700" onClick={() => removeItem(index)}>
-                <FiTrash2 size={14} />
+            <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+              <p className="text-sm text-gray-400 mb-2">Sin productos agregados</p>
+              <button type="button" className="text-blue-600 text-sm hover:text-blue-800" onClick={addItem}>
+                + Agregar primer producto
               </button>
-              <div className="col-span-1 text-xs text-gray-500 text-right">
-                ${(item.QUANTITY * item.UNIT_PRICE * (1 - item.DISCOUNT_PCT / 100)).toFixed(2)}
+            </div>
+          )}
+
+          {items.length > 0 && (
+            <div className="border rounded-lg overflow-hidden">
+              <div className="grid grid-cols-12 gap-1 bg-gray-50 p-2 text-xs font-medium text-gray-600 border-b">
+                <div className="col-span-3">Producto</div>
+                <div className="col-span-4">Descripcion</div>
+                <div className="col-span-1 text-center">Cant.</div>
+                <div className="col-span-2 text-right">Precio unit.</div>
+                <div className="col-span-1 text-right">Total</div>
+                <div className="col-span-1 text-center">Quitar</div>
+              </div>
+              {items.map((item, index) => (
+                <div key={index} className="grid grid-cols-12 gap-1 p-2 border-t items-center">
+                  <div className="col-span-3">
+                    <select
+                      className="w-full border rounded p-1.5 text-sm"
+                      value={item.PRODUCT_ID}
+                      onChange={(e) => handleProductSelect(index, e.target.value)}
+                    >
+                      <option value="">Seleccionar...</option>
+                      {products.map((p) => (
+                        <option key={p.ID} value={p.ID}>{p.NAME}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-4">
+                    <input
+                      className="w-full border rounded p-1.5 text-sm"
+                      placeholder="Descripcion del producto"
+                      value={item.ITEM_DESCRIPTION}
+                      onChange={(e) => handleItemChange(index, "ITEM_DESCRIPTION", e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <input
+                      className="w-full border rounded p-1.5 text-sm text-center"
+                      type="number"
+                      min="1"
+                      value={item.QUANTITY}
+                      onChange={(e) => handleItemChange(index, "QUANTITY", e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      className="w-full border rounded p-1.5 text-sm text-right"
+                      type="number"
+                      step="0.01"
+                      value={item.UNIT_PRICE}
+                      onChange={(e) => handleItemChange(index, "UNIT_PRICE", e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="col-span-1 text-sm font-medium text-right text-gray-700">
+                    ${(item.QUANTITY * item.UNIT_PRICE).toFixed(2)}
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <button type="button" className="text-red-400 hover:text-red-600" onClick={() => removeItem(index)}>
+                      <FiTrash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div className="grid grid-cols-12 gap-1 p-2 bg-gray-50 border-t">
+                <div className="col-span-10 text-right text-sm font-semibold text-gray-700">Total de productos:</div>
+                <div className="col-span-1 text-right text-sm font-bold text-blue-600">
+                  ${items.reduce((sum, item) => sum + item.QUANTITY * item.UNIT_PRICE, 0).toFixed(2)}
+                </div>
+                <div className="col-span-1"></div>
               </div>
             </div>
-          ))}
+          )}
         </div>
 
         <div className="flex justify-end gap-2">

@@ -295,9 +295,16 @@ export function Opportunities() {
             </table>
           </div>
         ) : (
-          <DragDropContext onDragEnd={onDragEnd}>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-              {openStageIds.map((stageId) => {
+          <div>
+            <div className="text-xs text-gray-400 mb-2 text-center">
+              Arrastra las tarjetas entre etapas para cambiar su estado
+            </div>
+            <DragDropContext onDragEnd={onDragEnd}>
+              <div
+                className="grid gap-4 mb-6"
+                style={{ gridTemplateColumns: `repeat(${Math.max(openStageIds.length, 2)}, minmax(0, 1fr))` }}
+              >
+                {openStageIds.map((stageId) => {
                 const stage = stageMap[stageId];
                 return (
                   <Droppable key={stageId} droppableId={String(stageId)}>
@@ -330,8 +337,9 @@ export function Opportunities() {
                   </Droppable>
                 );
               })}
-            </div>
-          </DragDropContext>
+              </div>
+            </DragDropContext>
+          </div>
         )}
 
         {selectedOpp && !showForm && (

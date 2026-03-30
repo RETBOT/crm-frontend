@@ -23,10 +23,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Selector de asignado en `ActivityForm` cuando usuario tiene permiso `activities.assign`
 - API `getActivityUsers()` para obtener usuarios de la sucursal
 - `ActivityList` y `Activities` cargan usuarios si tienen permiso `activities.assign`
+- Soporte para módulos de productos y oportunidades con nuevos permisos
 
 ### Changed
 - `ActivityForm` acepta prop `assigneeList` y muestra dropdown "Asignar a" (con opcion "Asignarme a mi")
 - Payload de creacion incluye `OWNER_USER_ID` opcional
+- `RoleManagement`: mapeo de permisos del backend (array de strings) a IDs numéricos
+- `UserManagement`: compatibilidad con formato de permisos del backend
 
 ---
 

@@ -118,6 +118,7 @@ export function Admin() {
             users={usersWithRoles}
             roles={roles}
             branches={branches}
+            routes={routes}
             selectedUser={selectedUser}
             onSelectUser={setSelectedUser}
             onRefresh={loadData}

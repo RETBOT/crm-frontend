@@ -42,7 +42,15 @@ export const RoleManagement = ({ roles = [], permissions = [], onRefresh }) => {
 
   const handleSelectRole = (role) => {
     setSelectedRole(role);
-    setSelectedPermissionIds(role.permission_ids || []);
+    // El backend devuelve permissions como array de strings (keys), necesitamos mapear a IDs
+    if (role.permissions && Array.isArray(role.permissions)) {
+      const permIds = permissions
+        .filter(p => role.permissions.includes(p.permission_key))
+        .map(p => p.permission_id);
+      setSelectedPermissionIds(permIds);
+    } else {
+      setSelectedPermissionIds(role.permission_ids || []);
+    }
     setShowCreateForm(false);
   };
 
@@ -146,7 +154,8 @@ export const RoleManagement = ({ roles = [], permissions = [], onRefresh }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {roles.map((role) => {
-          const permCount = role.permission_ids?.length || 0;
+          // El backend puede devolver permissions (array de strings) o permission_ids (array de IDs)
+          const permCount = role.permissions?.length || role.permission_ids?.length || 0;
           const isSelected = selectedRole?.role_id === role.role_id;
           return (
             <div

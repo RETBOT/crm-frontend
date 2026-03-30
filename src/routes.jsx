@@ -7,9 +7,10 @@ import {
   RectangleStackIcon,
   MapIcon,
   Cog6ToothIcon,
+  CubeIcon,
 
 } from "@heroicons/react/24/solid";
-import { Home, Accounts, Prospects, Activities, Contacts, Opportunities, Reports, Maps, Admin } from "@/pages/dashboard";
+import { Home, Accounts, Prospects, Activities, Contacts, Opportunities, Reports, Maps, Admin, Products } from "@/pages/dashboard";
 import { SignIn, SignUp, ForgotPassword } from "@/pages/auth";
 
 
@@ -18,7 +19,7 @@ const icon = {
 };
 
 export const rSidenavoutes = [
-    {
+  {
     layout: "dashboard",
     pages: [
       {
@@ -68,6 +69,13 @@ export const rSidenavoutes = [
         name: "Oportunidades",
         path: "/opportunities",
         element: <Opportunities />,
+      },
+      // productos
+      {
+        icon: <CubeIcon {...icon} />,
+        name: "Productos",
+        path: "/products",
+        element: <Products />,
       },
       // reports
       {
@@ -138,6 +146,13 @@ export const routes = [
         name: "opportunities",
         path: "/opportunities",
         element: <Opportunities />,
+      },
+      // productos
+      {
+        icon: <CubeIcon {...icon} />,
+        name: "products",
+        path: "/products",
+        element: <Products />,
       },
       // reports
       {

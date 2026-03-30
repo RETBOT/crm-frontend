@@ -3,7 +3,7 @@ import { FiPlus, FiSearch, FiCheckCircle, FiXCircle } from "react-icons/fi";
 import { createAdminUser } from "../../api/admin";
 import { UserDetailPanel } from "./user-detail-panel";
 
-export const UserManagement = ({ users = [], roles = [], branches = [], selectedUser, onSelectUser, onRefresh }) => {
+export const UserManagement = ({ users = [], roles = [], branches = [], routes = [], selectedUser, onSelectUser, onRefresh }) => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
@@ -231,7 +231,7 @@ export const UserManagement = ({ users = [], roles = [], branches = [], selected
             user={selectedUser}
             roles={roles}
             branches={branches}
-            routeOptions={[]}
+            routeOptions={routes}
             onRefresh={onRefresh}
             onClose={() => onSelectUser(null)}
           />

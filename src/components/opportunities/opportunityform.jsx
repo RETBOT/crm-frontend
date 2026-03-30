@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { FiPlus, FiTrash2 } from "react-icons/fi";
+import { hasPermission } from "../../utils/auth";
+import { PERMISSIONS } from "../../utils/permissions";
 
 export const OpportunityForm = ({
   title,
@@ -13,6 +15,7 @@ export const OpportunityForm = ({
   onSave,
   onCancel,
 }) => {
+  const canEditPrice = hasPermission(PERMISSIONS.OPPORTUNITIES_PRICE_EDIT);
   const needsCustomerSelector = customerList.length > 0 && !customerId;
 
   const [formData, setFormData] = useState({
@@ -54,6 +57,7 @@ export const OpportunityForm = ({
               ...item,
               PRODUCT_ID: productId,
               ITEM_DESCRIPTION: product ? product.NAME : item.ITEM_DESCRIPTION,
+              // El precio siempre se auto-completa desde el producto
               UNIT_PRICE: product ? product.UNIT_PRICE : item.UNIT_PRICE,
             }
           : item
@@ -62,6 +66,10 @@ export const OpportunityForm = ({
   };
 
   const handleItemChange = (index, field, value) => {
+    // El precio no se puede editar manualmente (solo se auto-completa desde el producto)
+    if (field === "UNIT_PRICE") return;
+    // No permitir cambio de descuento
+    if (field === "DISCOUNT_PCT") return;
     setItems((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
     );
@@ -107,7 +115,6 @@ export const OpportunityForm = ({
             ITEM_DESCRIPTION: item.ITEM_DESCRIPTION,
             QUANTITY: Number(item.QUANTITY) || 1,
             UNIT_PRICE: Number(item.UNIT_PRICE) || 0,
-            DISCOUNT_PCT: 0,
           })),
       };
 
@@ -204,9 +211,8 @@ export const OpportunityForm = ({
               <div className="grid grid-cols-12 gap-1 bg-gray-50 p-2 text-xs font-medium text-gray-600 border-b">
                 <div className="col-span-3">Producto</div>
                 <div className="col-span-4">Descripcion</div>
-                <div className="col-span-1 text-center">Cant.</div>
-                <div className="col-span-2 text-right">Precio unit.</div>
-                <div className="col-span-1 text-right">Total</div>
+                <div className="col-span-2 text-center">Cantidad</div>
+                <div className="col-span-2 text-right">Precio</div>
                 <div className="col-span-1 text-center">Quitar</div>
               </div>
               {items.map((item, index) => (
@@ -231,7 +237,7 @@ export const OpportunityForm = ({
                       onChange={(e) => handleItemChange(index, "ITEM_DESCRIPTION", e.target.value)}
                     />
                   </div>
-                  <div className="col-span-1">
+                  <div className="col-span-2">
                     <input
                       className="w-full border rounded p-1.5 text-sm text-center"
                       type="number"
@@ -242,16 +248,13 @@ export const OpportunityForm = ({
                   </div>
                   <div className="col-span-2">
                     <input
-                      className="w-full border rounded p-1.5 text-sm text-right"
+                      className="w-full border rounded p-1.5 text-sm text-right bg-gray-100"
                       type="number"
                       step="0.01"
                       value={item.UNIT_PRICE}
-                      onChange={(e) => handleItemChange(index, "UNIT_PRICE", e.target.value)}
-                      placeholder="0.00"
+                      readOnly
+                      disabled
                     />
-                  </div>
-                  <div className="col-span-1 text-sm font-medium text-right text-gray-700">
-                    ${(item.QUANTITY * item.UNIT_PRICE).toFixed(2)}
                   </div>
                   <div className="col-span-1 text-center">
                     <button type="button" className="text-red-400 hover:text-red-600" onClick={() => removeItem(index)}>

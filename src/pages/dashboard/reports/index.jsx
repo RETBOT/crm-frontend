@@ -1,0 +1,229 @@
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  FiChartBar,
+  FiDollarSign,
+  FiUsers,
+  FiActivity,
+  FiTrendingUp,
+  FiPackage,
+} from "react-icons/fi";
+import { hasPermission } from "../../../utils/auth";
+import { ReportFilters } from "../../../components/reports/report-filters";
+import {
+  getDashboardReport,
+  getSalesReport,
+  getCustomersReport,
+  getActivitiesReport,
+  getOpportunitiesReport,
+  getProductsReport,
+} from "../../../api/reports";
+
+import { DashboardReport } from "./dashboard-report";
+import { SalesReport } from "./sales-report";
+import { CustomersReport } from "./customers-report";
+import { ActivitiesReport } from "./activities-report";
+import { OpportunitiesReport } from "./opportunities-report";
+import { ProductsReport } from "./products-report";
+
+const TABS = [
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: <FiChartBar className="w-4 h-4" />,
+    permission: "reports.view",
+  },
+  {
+    id: "sales",
+    label: "Ventas",
+    icon: <FiDollarSign className="w-4 h-4" />,
+    permission: "reports.view",
+  },
+  {
+    id: "customers",
+    label: "Clientes",
+    icon: <FiUsers className="w-4 h-4" />,
+    permission: "reports.view",
+  },
+  {
+    id: "activities",
+    label: "Actividades",
+    icon: <FiActivity className="w-4 h-4" />,
+    permission: "reports.view",
+  },
+  {
+    id: "opportunities",
+    label: "Oportunidades",
+    icon: <FiTrendingUp className="w-4 h-4" />,
+    permission: "reports.view",
+  },
+  {
+    id: "products",
+    label: "Productos",
+    icon: <FiPackage className="w-4 h-4" />,
+    permission: "reports.view",
+  },
+];
+
+const DEFAULT_FILTERS = {
+  datePreset: "this_month",
+  startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    .toISOString()
+    .split("T")[0],
+  endDate: new Date().toISOString().split("T")[0],
+  branchIds: null,
+  userIds: null,
+  productIds: null,
+};
+
+export function Reports() {
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [data, setData] = useState(null);
+
+  const visibleTabs = TABS.filter((tab) => hasPermission(tab.permission));
+
+  const loadData = useCallback(async () => {
+    if (!hasPermission("reports.view")) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      let result;
+      switch (activeTab) {
+        case "dashboard":
+          result = await getDashboardReport(filters);
+          break;
+        case "sales":
+          result = await getSalesReport(filters);
+          break;
+        case "customers":
+          result = await getCustomersReport(filters);
+          break;
+        case "activities":
+          result = await getActivitiesReport(filters);
+          break;
+        case "opportunities":
+          result = await getOpportunitiesReport(filters);
+          break;
+        case "products":
+          result = await getProductsReport(filters);
+          break;
+        default:
+          result = null;
+      }
+      setData(result?.data || result);
+    } catch (err) {
+      console.error("Error cargando reporte:", err);
+      setError(err.message || "Error al cargar el reporte");
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, filters]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleFiltersChange = (newFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleApplyFilters = () => {
+    loadData();
+  };
+
+  const handleSaveView = (viewFilters) => {
+    // TODO: Implementar guardado de vistas
+    console.log("Guardar vista:", viewFilters);
+  };
+
+  if (!hasPermission("reports.view")) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        No cuenta con permisos para acceder a reportes
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Reportes</h1>
+        <p className="text-gray-600">
+          Analiza el rendimiento de tu negocio con reportes detallados
+        </p>
+      </div>
+
+      {/* Filtros */}
+      <ReportFilters
+        filters={filters}
+        onChange={handleFiltersChange}
+        onApply={handleApplyFilters}
+        onSaveView={handleSaveView}
+        showSaveView={hasPermission("reports.saved_views")}
+        loading={loading}
+      />
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 border-b overflow-x-auto">
+        {visibleTabs.map((tab) => (
+          <button
+            key={tab.id}
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === tab.id
+                ? "border-blue-500 text-blue-600 bg-blue-50"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+            }`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* Contenido del tab activo */}
+      <div className="bg-white rounded-lg shadow">
+        {loading ? (
+          <div className="p-12 flex justify-center items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <>
+            {activeTab === "dashboard" && (
+              <DashboardReport data={data} filters={filters} />
+            )}
+            {activeTab === "sales" && (
+              <SalesReport data={data} filters={filters} />
+            )}
+            {activeTab === "customers" && (
+              <CustomersReport data={data} filters={filters} />
+            )}
+            {activeTab === "activities" && (
+              <ActivitiesReport data={data} filters={filters} />
+            )}
+            {activeTab === "opportunities" && (
+              <OpportunitiesReport data={data} filters={filters} />
+            )}
+            {activeTab === "products" && (
+              <ProductsReport data={data} filters={filters} />
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default Reports;

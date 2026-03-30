@@ -83,6 +83,7 @@ export const rSidenavoutes = [
         name: "Reportes",
         path: "/reports",
         element: <Reports />,
+        requiredPermissions: ["reports.view"],
       },
       {
         icon: <Cog6ToothIcon {...icon} />,

@@ -29,18 +29,29 @@ async function withRefresh(fn, ...args) {
 // REPORTES PRINCIPALES
 // ============================================
 
+// Helper para formatear filtros correctamente
+function formatFilters(filters) {
+  return {
+    START_DATE: filters.startDate || null,
+    END_DATE: filters.endDate || null,
+    COMPARE_START_DATE: filters.compareStartDate || null,
+    COMPARE_END_DATE: filters.compareEndDate || null,
+    BRANCH_IDS: filters.branchIds?.length > 0 ? filters.branchIds : null,
+    USER_IDS: filters.userIds?.length > 0 ? filters.userIds : null,
+    PRODUCT_IDS: filters.productIds?.length > 0 ? filters.productIds : null,
+    STATUS: filters.status || null,
+    STAGE_IDS: filters.stageIds?.length > 0 ? filters.stageIds : null,
+    MIN_AMOUNT: filters.minAmount || null,
+    MAX_AMOUNT: filters.maxAmount || null,
+    SEARCH: filters.search || "",
+  };
+}
+
 export const getDashboardReport = async (filters = {}) =>
   withRefresh(async () => {
     const res = await axios.post(
       `${url}reports/dashboard`,
-      {
-        START_DATE: filters.startDate || null,
-        END_DATE: filters.endDate || null,
-        COMPARE_START_DATE: filters.compareStartDate || null,
-        COMPARE_END_DATE: filters.compareEndDate || null,
-        BRANCH_IDS: filters.branchIds || null,
-        USER_IDS: filters.userIds || null,
-      },
+      formatFilters(filters),
       authHeader()
     );
     return res.data;
@@ -50,12 +61,7 @@ export const getSalesReport = async (filters = {}) =>
   withRefresh(async () => {
     const res = await axios.post(
       `${url}reports/sales`,
-      {
-        START_DATE: filters.startDate || null,
-        END_DATE: filters.endDate || null,
-        BRANCH_IDS: filters.branchIds || null,
-        USER_IDS: filters.userIds || null,
-      },
+      formatFilters(filters),
       authHeader()
     );
     return res.data;
@@ -65,11 +71,7 @@ export const getCustomersReport = async (filters = {}) =>
   withRefresh(async () => {
     const res = await axios.post(
       `${url}reports/customers`,
-      {
-        START_DATE: filters.startDate || null,
-        END_DATE: filters.endDate || null,
-        BRANCH_IDS: filters.branchIds || null,
-      },
+      formatFilters(filters),
       authHeader()
     );
     return res.data;
@@ -79,12 +81,7 @@ export const getActivitiesReport = async (filters = {}) =>
   withRefresh(async () => {
     const res = await axios.post(
       `${url}reports/activities`,
-      {
-        START_DATE: filters.startDate || null,
-        END_DATE: filters.endDate || null,
-        BRANCH_IDS: filters.branchIds || null,
-        USER_IDS: filters.userIds || null,
-      },
+      formatFilters(filters),
       authHeader()
     );
     return res.data;
@@ -94,12 +91,7 @@ export const getOpportunitiesReport = async (filters = {}) =>
   withRefresh(async () => {
     const res = await axios.post(
       `${url}reports/opportunities`,
-      {
-        START_DATE: filters.startDate || null,
-        END_DATE: filters.endDate || null,
-        BRANCH_IDS: filters.branchIds || null,
-        USER_IDS: filters.userIds || null,
-      },
+      formatFilters(filters),
       authHeader()
     );
     return res.data;
@@ -109,12 +101,7 @@ export const getProductsReport = async (filters = {}) =>
   withRefresh(async () => {
     const res = await axios.post(
       `${url}reports/products`,
-      {
-        START_DATE: filters.startDate || null,
-        END_DATE: filters.endDate || null,
-        BRANCH_IDS: filters.branchIds || null,
-        PRODUCT_IDS: filters.productIds || null,
-      },
+      formatFilters(filters),
       authHeader()
     );
     return res.data;
@@ -131,13 +118,7 @@ export const exportReport = async (reportType, format, filters = {}) =>
       {
         REPORT_TYPE: reportType,
         FORMAT: format,
-        FILTERS: {
-          START_DATE: filters.startDate || null,
-          END_DATE: filters.endDate || null,
-          BRANCH_IDS: filters.branchIds || null,
-          USER_IDS: filters.userIds || null,
-          PRODUCT_IDS: filters.productIds || null,
-        },
+        FILTERS: formatFilters(filters),
       },
       {
         ...authHeader(),

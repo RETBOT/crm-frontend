@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  FiChartBar,
+  FiBarChart,
   FiDollarSign,
   FiUsers,
   FiActivity,
@@ -29,7 +29,7 @@ const TABS = [
   {
     id: "dashboard",
     label: "Dashboard",
-    icon: <FiChartBar className="w-4 h-4" />,
+    icon: <FiBarChart className="w-4 h-4" />,
     permission: "reports.view",
   },
   {
@@ -70,9 +70,14 @@ const DEFAULT_FILTERS = {
     .toISOString()
     .split("T")[0],
   endDate: new Date().toISOString().split("T")[0],
-  branchIds: null,
-  userIds: null,
-  productIds: null,
+  branchIds: [],
+  userIds: [],
+  productIds: [],
+  stageIds: [],
+  status: "",
+  minAmount: "",
+  maxAmount: "",
+  search: "",
 };
 
 export function Reports() {

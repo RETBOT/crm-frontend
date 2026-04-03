@@ -40,10 +40,10 @@ export function Footer({ brandName, brandLink, routes }) {
 }
 
 Footer.defaultProps = {
-  brandName: "Grupo CRM",
+  brandName: "RETFlow CRM",
   brandLink: "#",
   routes: [
-    { name: "CRM", path: "#" },
+    { name: "RETFlow CRM", path: "#" },
   ],
 };
 

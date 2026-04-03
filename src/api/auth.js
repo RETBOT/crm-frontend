@@ -83,12 +83,35 @@ export const forgotpwd = async (usuario, email) => {
           "Usuario o Correo Electrónico incorrectos"
       );
     }
-    // Si el error es de conexión o servidor caído
     else if (error.request) {
       console.error("No hay respuesta del servidor:", error.request);
       throw new Error("No hay conexión con el servidor");
     }
-    // Si es otro tipo de error inesperado
+    else {
+      console.error("Error desconocido:", error.message);
+      throw new Error("Ocurrió un error inesperado");
+    }
+  }
+};
+
+export const resetPassword = async (token, newPassword) => {
+  try {
+    const response = await axios.post(`${url}login/reset-password`, {
+      token,
+      newPassword,
+    });
+
+    return response;
+  } catch (error) {
+    if (error.response) {
+      throw new Error(
+        error.response.data.message || "Error al restablecer la contraseña"
+      );
+    }
+    else if (error.request) {
+      console.error("No hay respuesta del servidor:", error.request);
+      throw new Error("No hay conexión con el servidor");
+    }
     else {
       console.error("Error desconocido:", error.message);
       throw new Error("Ocurrió un error inesperado");

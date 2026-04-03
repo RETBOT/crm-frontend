@@ -5,7 +5,7 @@ import { isAuthenticated } from "../utils/auth";
 
 const AuthWrapper = () => {
   const location = useLocation();
-  const allowedPaths = ["/auth/sign-in", "/auth/forgot-password"];
+  const allowedPaths = ["/auth/sign-in", "/auth/forgot-password", "/auth/reset-password"];
 
   // Si NO está autenticado y trata de entrar a otra ruta que no sea sign-in o forgot-password
   if (!isAuthenticated() && !allowedPaths.includes(location.pathname)) {

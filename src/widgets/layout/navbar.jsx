@@ -54,7 +54,7 @@ export function Navbar({ brandName, routes, action }) {
           </Typography>
         </Link>
         <div className="hidden lg:block">{navList}</div>
-        {React.cloneElement(action, {
+        {action && React.cloneElement(action, {
           className: "hidden lg:inline-block",
         })}
         <IconButton
@@ -73,7 +73,7 @@ export function Navbar({ brandName, routes, action }) {
       <Collapse open={openNav}>
         <div className="container mx-auto">
           {navList}
-          {React.cloneElement(action, {
+          {action && React.cloneElement(action, {
             className: "w-full block lg:hidden",
           })}
         </div>
@@ -83,17 +83,8 @@ export function Navbar({ brandName, routes, action }) {
 }
 
 Navbar.defaultProps = {
-  brandName: "Material Tailwind React",
-  action: (
-    <a
-      href="https://www.creative-tim.com/product/material-tailwind-dashboard-react"
-      target="_blank"
-    >
-      <Button variant="gradient" size="sm" fullWidth>
-        free download
-      </Button>
-    </a>
-  ),
+  brandName: "RETFlow CRM",
+  action: null,
 };
 
 Navbar.propTypes = {

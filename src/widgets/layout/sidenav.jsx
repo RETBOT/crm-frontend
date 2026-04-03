@@ -10,7 +10,7 @@ import {
 
 import { useMaterialTailwindController, setOpenSidenav } from "@/context";
 import { hasAnyPermission } from "@/utils/auth";
-import banner from "/img/banner.png";
+import banner from "/img/RETFlow.png";
 
 const rutaServer = import.meta.env.VITE_RUTA_SERVER;
 
@@ -107,8 +107,8 @@ export function Sidenav({ brandImg, brandName, routes }) {
 
 
 Sidenav.defaultProps = {
-  brandImg: "/img/logo-ct.png",
-  brandName: "Material Tailwind React",
+  brandImg: "/img/RETFlow.png",
+  brandName: "RETFlow",
 };
 
 Sidenav.propTypes = {

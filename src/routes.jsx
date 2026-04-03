@@ -11,7 +11,7 @@ import {
 
 } from "@heroicons/react/24/solid";
 import { Home, Accounts, Prospects, Activities, Contacts, Opportunities, Reports, Maps, Admin, Products } from "@/pages/dashboard";
-import { SignIn, SignUp, ForgotPassword } from "@/pages/auth";
+import { SignIn, SignUp, ForgotPassword, ResetPassword } from "@/pages/auth";
 
 
 const icon = {
@@ -210,6 +210,12 @@ export const routes = [
         name: "forgot password",
         path: "/forgot-password",
         element: <ForgotPassword />,
+      },
+      {
+        icon: <InformationCircleIcon {...icon} />,
+        name: "reset password",
+        path: "/reset-password",
+        element: <ResetPassword />,
       },
     ],
   },

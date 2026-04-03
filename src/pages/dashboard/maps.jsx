@@ -350,6 +350,18 @@ function MapStatePersister({ onMapStateChange }) {
   return null;
 }
 
+function CheckinFlyTo({ selected }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (selected?.CLIENTEID?.startsWith('checkin-') && selected?.LAT && selected?.LON) {
+      map.flyTo([selected.LAT, selected.LON], 17, { duration: 0.8 });
+    }
+  }, [selected, map]);
+
+  return null;
+}
+
 function MarkerClusterLayer({ clientesConCoordenadas, rutas, markersRef, clienteSeleccionado }) {
   const map = useMap();
   const clusterRef = useRef(null);
@@ -563,9 +575,13 @@ export function Maps() {
   const [routeResult, setRouteResult] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [checkins, setCheckins] = useState([]);
-  const [showCheckins, setShowCheckins] = useState(false);
+  const [activeMapTab, setActiveMapTab] = useState('clientes');
   const [checkinDateFrom, setCheckinDateFrom] = useState('');
   const [checkinDateTo, setCheckinDateTo] = useState('');
+  const [checkinType, setCheckinType] = useState('');
+  const [checkinsLoading, setCheckinsLoading] = useState(false);
+  const [checkinsPage, setCheckinsPage] = useState(1);
+  const [checkinsTotal, setCheckinsTotal] = useState(0);
   const [filters, setFilters] = useState({
     searchTerm: urlParams.search,
     status: urlParams.status,
@@ -665,26 +681,34 @@ export function Maps() {
   }, [filters.sucursal]);
 
   useEffect(() => {
-    if (!showCheckins) {
+    if (activeMapTab !== 'checkins') {
       setCheckins([]);
       return;
     }
+    setCheckinsLoading(true);
     const fetchCheckins = async () => {
       try {
         const res = await getActividadesCheckins({
           FROM_DATE: checkinDateFrom || null,
           TO_DATE: checkinDateTo || null,
+          TYPE: checkinType || null,
         });
-        setCheckins(Array.isArray(res) ? res : (res.data || []));
+        const data = Array.isArray(res) ? res : (res.data || []);
+        setCheckins(data);
+        setCheckinsTotal(data.length);
       } catch {
         setCheckins([]);
+        setCheckinsTotal(0);
+      } finally {
+        setCheckinsLoading(false);
       }
     };
     fetchCheckins();
-  }, [showCheckins, checkinDateFrom, checkinDateTo]);
+  }, [activeMapTab, checkinDateFrom, checkinDateTo, checkinType]);
 
   useEffect(() => {
     if (!clienteSeleccionado) return;
+    if (clienteSeleccionado.CLIENTEID?.startsWith('checkin-')) return;
 
     const existsInCurrentList = clientes.some(
       (cliente) => normalizeId(cliente.CLIENTEID) === normalizeId(clienteSeleccionado.CLIENTEID)
@@ -787,272 +811,349 @@ export function Maps() {
   return (
     <div className="flex flex-col md:flex-row h-screen">
       <div className="w-full md:w-1/3 bg-white shadow-lg overflow-y-auto h-1/2 md:h-auto">
-        <div className="p-4 border-b">
-          <h2 className="text-xl font-bold mb-4">Filtros de Clientes</h2>
+        {/* Tabs */}
+        <div className="flex border-b">
+          <button
+            className={`flex-1 py-3 text-sm font-medium text-center transition-colors ${
+              activeMapTab === 'clientes'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveMapTab('clientes')}
+          >
+            📍 Clientes
+          </button>
+          <button
+            className={`flex-1 py-3 text-sm font-medium text-center transition-colors ${
+              activeMapTab === 'checkins'
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveMapTab('checkins')}
+          >
+            📌 Check-ins
+          </button>
+        </div>
 
-          <div className="flex items-center mb-4 relative">
-            <FiSearch className="absolute left-3 top-2.5 text-gray-400" />
-            <input
-              className="pl-10 pr-4 py-2 w-full border rounded-lg"
-              placeholder="Buscar clientes..."
-              value={filters.searchTerm}
-              onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-            />
-          </div>
+        {activeMapTab === 'clientes' ? (
+          <>
+            <div className="p-4 border-b">
+              <div className="flex items-center mb-4 relative">
+                <FiSearch className="absolute left-3 top-2.5 text-gray-400" />
+                <input
+                  className="pl-10 pr-4 py-2 w-full border rounded-lg"
+                  placeholder="Buscar clientes..."
+                  value={filters.searchTerm}
+                  onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+                />
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
-            <select
-              className="border rounded p-2 text-sm"
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-            >
-              <option value="">Todos los estatus</option>
-              <option value="ACTIVO">ACTIVO</option>
-              <option value="INACTIVO">INACTIVO</option>
-            </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+                <select
+                  className="border rounded p-2 text-sm"
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                >
+                  <option value="">Todos los estatus</option>
+                  <option value="ACTIVO">ACTIVO</option>
+                  <option value="INACTIVO">INACTIVO</option>
+                </select>
 
-            <select
-              className="border rounded p-2 text-sm"
-              value={filters.sucursal}
-              onChange={(e) => handleFilterChange('sucursal', e.target.value)}
-            >
-              <option value="">Todas las sucursales</option>
-              {sucursales.map((sucursal) => (
-                <option key={sucursal.ID} value={normalizeId(sucursal.ID)}>
-                  {sucursal.DSC}
-                </option>
-              ))}
-            </select>
-          </div>
+                <select
+                  className="border rounded p-2 text-sm"
+                  value={filters.sucursal}
+                  onChange={(e) => handleFilterChange('sucursal', e.target.value)}
+                >
+                  <option value="">Todas las sucursales</option>
+                  {sucursales.map((sucursal) => (
+                    <option key={sucursal.ID} value={normalizeId(sucursal.ID)}>
+                      {sucursal.DSC}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="mb-4">
-            <select
-              className="border rounded p-2 text-sm w-full"
-              value={filters.salesRep}
-              onChange={(e) => handleFilterChange('salesRep', e.target.value)}
-            >
-              <option value="">
-                Todas las rutas
-                {filters.sucursal
-                  ? ` de ${sucursales.find((sucursal) => normalizeId(sucursal.ID) === normalizeId(filters.sucursal))?.DSC || ''}`
-                  : ''}
-              </option>
-              {rutas.map((ruta) => (
-                <option key={ruta.ID} value={normalizeId(ruta.ID)}>
-                  {ruta.DSC}
-                </option>
-              ))}
-            </select>
-          </div>
+              <div className="mb-4">
+                <select
+                  className="border rounded p-2 text-sm w-full"
+                  value={filters.salesRep}
+                  onChange={(e) => handleFilterChange('salesRep', e.target.value)}
+                >
+                  <option value="">
+                    Todas las rutas
+                    {filters.sucursal
+                      ? ` de ${sucursales.find((sucursal) => normalizeId(sucursal.ID) === normalizeId(filters.sucursal))?.DSC || ''}`
+                      : ''}
+                  </option>
+                  {rutas.map((ruta) => (
+                    <option key={ruta.ID} value={normalizeId(ruta.ID)}>
+                      {ruta.DSC}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {selectedClientsCount >= (userLocation ? 1 : 2) && (
-            <div className="flex gap-2 mb-2">
+              {selectedClientsCount >= (userLocation ? 1 : 2) && (
+                <div className="flex gap-2 mb-2">
+                  <button
+                    onClick={handleCalculateRoute}
+                    disabled={routeLoading || selectedClientsWithCoords.length < (userLocation ? 1 : 2)}
+                    className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {routeLoading ? (
+                      <FiLoader className="animate-spin" size={16} />
+                    ) : (
+                      <FiMap size={16} />
+                    )}
+                    {routeLoading ? 'Calculando...' : userLocation ? 'Calcular ruta desde mi ubicación' : 'Calcular ruta óptima'}
+                  </button>
+                  <button
+                    onClick={handleClearRoute}
+                    className="flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded text-sm transition-colors"
+                    title="Limpiar selección"
+                  >
+                    <FiTrash2 size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4">
+              {error && !loading && (
+                <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+
+              {totalRegs > 0 && (
+                <p className="text-xs text-gray-500 mb-3">
+                  Mostrando {clientes.length} de {totalRegs} clientes
+                  {selectedClientsCount > 0 && ` · ${selectedClientsCount} seleccionados`}
+                </p>
+              )}
+
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                </div>
+              ) : clientes.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No se encontraron clientes</div>
+              ) : (
+                <ul className="space-y-2">
+                  {clientes.map((cliente) => {
+                    const isSelected = selectedClients.has(cliente.CLIENTEID);
+                    const hasCoords = hasCoordinates(cliente);
+
+                    return (
+                      <li
+                        key={cliente.CLIENTEID}
+                        className={`p-3 mb-2 border rounded transition-colors ${
+                          normalizeId(clienteSeleccionado?.CLIENTEID) === normalizeId(cliente.CLIENTEID)
+                            ? 'bg-blue-50 border-blue-300'
+                            : isSelected
+                              ? 'bg-green-50 border-green-300'
+                              : 'hover:bg-blue-50'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (hasCoords) toggleClientSelection(cliente.CLIENTEID);
+                            }}
+                            disabled={!hasCoords}
+                            className={`mt-0.5 flex-shrink-0 ${!hasCoords ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                            title={hasCoords ? (isSelected ? 'Deseleccionar' : 'Seleccionar para ruta') : 'Sin coordenadas'}
+                          >
+                            {isSelected ? (
+                              <FiCheck size={18} className="text-green-600" />
+                            ) : (
+                              <FiMinus size={18} className="text-gray-400" />
+                            )}
+                          </button>
+
+                          <div
+                            className="flex-1 cursor-pointer"
+                            onClick={() => {
+                              if (hasCoords) {
+                                setClienteSeleccionado(cliente);
+                              } else {
+                                openGoogleMapsByAddress(cliente);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-bold">{cliente.NOMBRECLI}</h3>
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                                cliente.ESTATUS === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {cliente.ESTATUS || 'DESCONOCIDO'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600">{cliente.GIRO}</p>
+                            {hasCoords ? (
+                              <p className="text-xs text-gray-500 mt-1">
+                                <FiMapPin className="inline mr-1" />
+                                {parseFloat(cliente.LAT).toFixed(4)}, {parseFloat(cliente.LON).toFixed(4)}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-amber-600 mt-1">Sin coordenadas, se abre por dirección</p>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center p-3 border-t">
               <button
-                onClick={handleCalculateRoute}
-                disabled={routeLoading || selectedClientsWithCoords.length < (userLocation ? 1 : 2)}
-                className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium disabled:opacity-50 transition-colors"
+                className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                disabled={page === 1}
               >
-                {routeLoading ? (
-                  <FiLoader className="animate-spin" size={16} />
-                ) : (
-                  <FiMap size={16} />
-                )}
-                {routeLoading ? 'Calculando...' : userLocation ? 'Calcular ruta desde mi ubicación' : 'Calcular ruta óptima'}
+                Anterior
               </button>
+              <span className="text-gray-600 text-sm">Pag. {page} / {totalPaginas}</span>
               <button
-                onClick={handleClearRoute}
-                className="flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded text-sm transition-colors"
-                title="Limpiar selección"
+                className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
+                onClick={() => setPage((prev) => prev + 1)}
+                disabled={page >= totalPaginas}
               >
-                <FiTrash2 size={16} />
+                Siguiente
               </button>
             </div>
-          )}
-
-          <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-            <label className="flex items-center gap-2 text-sm font-medium text-purple-800 mb-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showCheckins}
-                onChange={(e) => setShowCheckins(e.target.checked)}
-                className="rounded border-purple-300 text-purple-600"
-              />
-              Mostrar visitas/check-ins
-            </label>
-            {showCheckins && (
-              <div className="grid grid-cols-2 gap-2">
+          </>
+        ) : (
+          <>
+            <div className="p-4 border-b">
+              <div className="grid grid-cols-2 gap-2 mb-3">
                 <div>
-                  <label className="text-xs text-purple-600">Desde</label>
+                  <label className="text-xs text-gray-500 mb-1 block">Desde</label>
                   <input
                     type="date"
                     value={checkinDateFrom}
                     onChange={(e) => setCheckinDateFrom(e.target.value)}
-                    className="w-full border border-purple-200 rounded px-2 py-1 text-xs"
+                    className="w-full border rounded px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-purple-600">Hasta</label>
+                  <label className="text-xs text-gray-500 mb-1 block">Hasta</label>
                   <input
                     type="date"
                     value={checkinDateTo}
                     onChange={(e) => setCheckinDateTo(e.target.value)}
-                    className="w-full border border-purple-200 rounded px-2 py-1 text-xs"
+                    className="w-full border rounded px-2 py-1.5 text-sm"
                   />
                 </div>
               </div>
-            )}
-            {showCheckins && checkins.length > 0 && (
-              <p className="text-xs text-purple-600 mt-2">{checkins.length} check-in(s) encontrados</p>
-            )}
-          </div>
 
-          {routeResult && (
-            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold text-blue-800 flex items-center gap-1">
-                  <FiMap size={14} /> Ruta calculada
-                  {routeResult.type === 'fallback' && (
-                    <span className="text-xs text-amber-600 font-normal">(directa)</span>
-                  )}
-                </h4>
-                <span className="text-xs text-blue-600">
-                  {routeResult.totalDistance !== 'N/A' ? `${routeResult.totalDistance} km` : ''}
-                  {routeResult.totalDuration !== 'N/A' ? ` · ${routeResult.totalDuration} min` : ''}
-                </span>
-              </div>
-              {routeResult.type === 'fallback' && (
-                <p className="text-xs text-amber-700 mb-2">
-                  Servidor de enrutamiento no disponible. Mostrando ruta directa.
-                </p>
-              )}
-              <div className="space-y-1 max-h-40 overflow-y-auto">
-                {routeResult.segments.map((seg, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
-                    <span className="font-bold text-blue-700 w-5">{i + 1}.</span>
-                    <span className="flex-1 truncate">{seg.from}</span>
-                    {seg.distance !== 'N/A' && (
-                      <span className="text-gray-500 whitespace-nowrap">{seg.distance} km · {seg.duration} min</span>
-                    )}
-                  </div>
-                ))}
-                {routeResult.segments.length > 0 && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="font-bold text-blue-700 w-5">{routeResult.segments.length + 1}.</span>
-                    <span className="flex-1 truncate">{routeResult.segments[routeResult.segments.length - 1]?.to}</span>
-                  </div>
-                )}
+              <div className="mb-3">
+                <select
+                  className="border rounded p-2 text-sm w-full"
+                  value={checkinType}
+                  onChange={(e) => setCheckinType(e.target.value)}
+                >
+                  <option value="">Todos los tipos</option>
+                  <option value="Visita">Visita</option>
+                  <option value="Reunion">Reunión</option>
+                  <option value="Llamada">Llamada</option>
+                  <option value="Correo">Correo</option>
+                  <option value="Tarea">Tarea</option>
+                </select>
               </div>
             </div>
-          )}
-        </div>
 
-        <div className="p-4">
-          {error && !loading && (
-            <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          {totalRegs > 0 && (
-            <p className="text-xs text-gray-500 mb-3">
-              Mostrando {clientes.length} de {totalRegs} clientes
-              {selectedClientsCount > 0 && ` · ${selectedClientsCount} seleccionados`}
-            </p>
-          )}
-
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            </div>
-          ) : clientes.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No se encontraron clientes</div>
-          ) : (
-            <ul className="space-y-2">
-              {clientes.map((cliente) => {
-                const isSelected = selectedClients.has(cliente.CLIENTEID);
-                const hasCoords = hasCoordinates(cliente);
-
-                return (
-                  <li
-                    key={cliente.CLIENTEID}
-                    className={`p-3 mb-2 border rounded transition-colors ${
-                      normalizeId(clienteSeleccionado?.CLIENTEID) === normalizeId(cliente.CLIENTEID)
-                        ? 'bg-blue-50 border-blue-300'
-                        : isSelected
-                          ? 'bg-green-50 border-green-300'
-                          : 'hover:bg-blue-50'
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (hasCoords) toggleClientSelection(cliente.CLIENTEID);
-                        }}
-                        disabled={!hasCoords}
-                        className={`mt-0.5 flex-shrink-0 ${!hasCoords ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
-                        title={hasCoords ? (isSelected ? 'Deseleccionar' : 'Seleccionar para ruta') : 'Sin coordenadas'}
-                      >
-                        {isSelected ? (
-                          <FiCheck size={18} className="text-green-600" />
-                        ) : (
-                          <FiMinus size={18} className="text-gray-400" />
-                        )}
-                      </button>
-
-                      <div
-                        className="flex-1 cursor-pointer"
+            <div className="p-4">
+              {checkinsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                </div>
+              ) : checkins.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No se encontraron check-ins</div>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500 mb-3">
+                    {checkinsTotal} check-in(s) encontrados
+                  </p>
+                  <ul className="space-y-2">
+                    {checkins.map((ci, idx) => (
+                      <li
+                        key={ci.ACTIVITYID || idx}
+                        className="p-3 mb-2 border rounded hover:bg-purple-50 transition-colors cursor-pointer"
                         onClick={() => {
-                          if (hasCoords) {
-                            setClienteSeleccionado(cliente);
-                          } else {
-                            openGoogleMapsByAddress(cliente);
+                          if (ci.CHECK_IN_LAT && ci.CHECK_IN_LON) {
+                            setClienteSeleccionado({
+                              CLIENTEID: `checkin-${ci.ACTIVITYID}`,
+                              NOMBRECLI: ci.NOMBRECLI,
+                              GIRO: `${ci.TYPE_NAME || ci.TYPE} - ${ci.SUBJECT}`,
+                              LAT: ci.CHECK_IN_LAT,
+                              LON: ci.CHECK_IN_LON,
+                            });
                           }
                         }}
                       >
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-bold">{cliente.NOMBRECLI}</h3>
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                            cliente.ESTATUS === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {cliente.ESTATUS || 'DESCONOCIDO'}
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-bold text-sm">{ci.NOMBRECLI}</h3>
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            {ci.TYPE_NAME || ci.TYPE}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600">{cliente.GIRO}</p>
-                        {hasCoords ? (
-                          <p className="text-xs text-gray-500 mt-1">
-                            <FiMapPin className="inline mr-1" />
-                            {parseFloat(cliente.LAT).toFixed(4)}, {parseFloat(cliente.LON).toFixed(4)}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-amber-600 mt-1">Sin coordenadas, se abre por dirección</p>
+                        <p className="text-xs text-gray-600">{ci.SUBJECT}</p>
+                        {ci.NOTES && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">{ci.NOTES}</p>
                         )}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+                        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                          <span>{ci.OWNER_NAME || 'N/A'}</span>
+                          <span>{ci.COMPLETED_AT ? new Date(ci.COMPLETED_AT).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          </>
+        )}
 
-        <div className="flex justify-between items-center p-3 border-t">
-          <button
-            className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
-            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-            disabled={page === 1}
-          >
-            Anterior
-          </button>
-          <span className="text-gray-600 text-sm">Pag. {page} / {totalPaginas}</span>
-          <button
-            className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
-            onClick={() => setPage((prev) => prev + 1)}
-            disabled={page >= totalPaginas}
-          >
-            Siguiente
-          </button>
-        </div>
+        {routeResult && activeMapTab === 'clientes' && (
+          <div className="p-4 border-t">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-semibold text-blue-800 flex items-center gap-1">
+                <FiMap size={14} /> Ruta calculada
+                {routeResult.type === 'fallback' && (
+                  <span className="text-xs text-amber-600 font-normal">(directa)</span>
+                )}
+              </h4>
+              <button onClick={() => setRouteResult(null)} className="text-gray-400 hover:text-gray-600">
+                <FiX size={14} />
+              </button>
+            </div>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {routeResult.segments.map((seg, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <span className="font-bold text-blue-700 w-5">{i + 1}.</span>
+                  <span className="flex-1 truncate">{seg.from}</span>
+                  {seg.distance !== 'N/A' && (
+                    <span className="text-gray-500 whitespace-nowrap">{seg.distance} km · {seg.duration} min</span>
+                  )}
+                </div>
+              ))}
+              {routeResult.segments.length > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="font-bold text-blue-700 w-5">{routeResult.segments.length + 1}.</span>
+                  <span className="flex-1 truncate">{routeResult.segments[routeResult.segments.length - 1]?.to}</span>
+                </div>
+              )}
+            </div>
+            <div className="text-xs text-blue-600 mt-2 font-medium">
+              {routeResult.totalDistance !== 'N/A' ? `${routeResult.totalDistance} km` : ''}
+              {routeResult.totalDuration !== 'N/A' ? ` · ${routeResult.totalDuration} min` : ''}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="w-full md:w-2/3 h-1/2 md:h-full relative">
@@ -1063,11 +1164,12 @@ export function Maps() {
           />
 
           <MapStatePersister onMapStateChange={handleMapStateChange} />
+          <CheckinFlyTo selected={clienteSeleccionado} />
           <MapSearchBar />
           <LocateControl onLocationFound={setUserLocation} />
           <UserLocationMarker location={userLocation} />
           <RouteLayer routeResult={routeResult} />
-          <CheckinsLayer checkins={checkins} />
+          {activeMapTab === 'checkins' && <CheckinsLayer checkins={checkins} />}
 
           <MarkerClusterLayer
             clientesConCoordenadas={clientesConCoordenadas}

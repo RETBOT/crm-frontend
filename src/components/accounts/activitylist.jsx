@@ -141,9 +141,19 @@ export const ActivityList = ({ clienteId, contacts = [], customerData = {} }) =>
     }
   };
 
-  const handleCompleteWithCheckin = async (activityId, lat, lon) => {
+  const handleCompleteWithCheckin = async (activityId, lat, lon, notes) => {
     try {
-      await completarActividad(activityId, "Completada", lat, lon);
+      await completarActividad(activityId, "Completada", lat, lon, notes);
+      setCheckinActivity(null);
+      fetchActividades();
+    } catch (err) {
+      alert(err?.message || "Error al completar actividad");
+    }
+  };
+
+  const handleCompleteWithoutLocation = async (activityId, notes) => {
+    try {
+      await completarActividad(activityId, "Completada", null, null, notes);
       setCheckinActivity(null);
       fetchActividades();
     } catch (err) {
@@ -273,7 +283,8 @@ export const ActivityList = ({ clienteId, contacts = [], customerData = {} }) =>
           activity={checkinActivity}
           customer={customerData}
           onClose={() => setCheckinActivity(null)}
-          onConfirm={(lat, lon) => handleCompleteWithCheckin(checkinActivity.ACTIVITYID, lat, lon)}
+          onConfirm={(lat, lon, notes) => handleCompleteWithCheckin(checkinActivity.ACTIVITYID, lat, lon, notes)}
+          onCompleteWithoutLocation={(notes) => handleCompleteWithoutLocation(checkinActivity.ACTIVITYID, notes)}
         />
       )}
     </div>

@@ -106,13 +106,16 @@ export const actualizarActividad = async (payload) => {
   }
 };
 
-export const completarActividad = async (ACTIVITY_ID, STATUS, CHECK_IN_LAT, CHECK_IN_LON) => {
+export const completarActividad = async (ACTIVITY_ID, STATUS, CHECK_IN_LAT, CHECK_IN_LON, NOTES) => {
   const token = localStorage.getItem("token");
   try {
     const payload = { ACTIVITY_ID, STATUS };
     if (CHECK_IN_LAT != null && CHECK_IN_LON != null) {
       payload.CHECK_IN_LAT = CHECK_IN_LAT;
       payload.CHECK_IN_LON = CHECK_IN_LON;
+    }
+    if (NOTES) {
+      payload.NOTES = NOTES;
     }
     const response = await axios.post(
       `${url}cn/actividades_completar`,
@@ -129,7 +132,7 @@ export const completarActividad = async (ACTIVITY_ID, STATUS, CHECK_IN_LAT, CHEC
     const status = error?.response?.status;
 
     if (status === 401) {
-      return await refreshToken(completarActividad, ACTIVITY_ID, STATUS, CHECK_IN_LAT, CHECK_IN_LON);
+      return await refreshToken(completarActividad, ACTIVITY_ID, STATUS, CHECK_IN_LAT, CHECK_IN_LON, NOTES);
     }
 
     if (status) {
@@ -214,6 +217,7 @@ export const getActividadesCheckins = async (filtros = {}) => {
         FROM_DATE: filtros.FROM_DATE || null,
         TO_DATE: filtros.TO_DATE || null,
         USER_ID: filtros.USER_ID || null,
+        TYPE: filtros.TYPE || null,
       },
       {
         headers: {

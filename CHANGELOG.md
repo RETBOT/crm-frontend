@@ -7,6 +7,40 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Check-in GPS con modal de mapa para completar Visita/Reunion
+  - Marcador arrastrable con límite de 200m desde posición GPS inicial
+  - Indicador de precisión GPS (verde <50m, amarillo 50-150m, ámbar >150m)
+  - Botón "Recalcular ubicación" para refrescar lectura GPS
+  - Notas obligatorias para Visita/Reunion (mínimo 10 caracteres)
+  - Botón "Completar sin ubicación" como fallback cuando falla GPS
+  - Notas se append al campo existente con separador `--- Check-in ---`
+- Tab "Check-ins" en mapa con filtros de fecha y tipo de actividad
+  - Lista de check-ins con nombre, tipo, usuario y fecha
+  - Click en check-in vuela el mapa a esa ubicación
+  - Notas del check-in se muestran en la lista
+  - Seguridad automática: respeta scope del usuario (ALL/BRANCH/ROUTE)
+- Componente `CheckinFlyTo` para navegación al hacer clic en check-in
+- Componente `CheckinModal` con mapa Leaflet, marcador draggable y campo de notas
+- API `getActividadesCheckins(filtros)` con filtros FROM_DATE, TO_DATE, TYPE, USER_ID
+
+### Changed
+- Mapa: sidebar reorganizado con tabs "Clientes" / "Check-ins" en vez de checkbox
+- `activitylist.jsx`: botón "Completar con check-in" para Visita/Reunion
+- `completarActividad` acepta notas como 5to parámetro
+- Filtro de sucursal en mapa corregido: envía ID en vez de nombre
+- `getActividadesCheckins` ahora envía filtro TYPE al backend
+- `maps.jsx`: `CheckinsLayer` solo se renderiza cuando tab "Check-ins" está activa
+
+### Fixed
+- Filtro de sucursal en mapa: ahora compara `SUCURSALID` en vez de `SUCURSAL`
+- Click en check-in del mapa ahora navega correctamente a la ubicación
+- Notas del check-in ahora se muestran en la lista del mapa
+- Filtro de tipo de actividad en check-ins ahora se envía al backend
+- `CheckinFlyTo` ya no se borra inmediatamente al seleccionar check-in
+
+---
+
+### Added
 - Buscador de direcciones con geocoding Nominatim en mapa de formulario de clientes
 - Auto-llenado del buscador con los campos de direccion del formulario
 - Mapa interactivo (Leaflet) en formulario de clientes para seleccionar coordenadas por click/arrastrar

@@ -20,6 +20,7 @@ import {
 } from "../../api/activities";
 import { getClientes, getContactos } from "../../api/accounts";
 import { ActivityForm } from "../../components";
+import { CheckinModal } from "../../components/activities/checkin-modal";
 import { hasPermission } from "../../utils/auth";
 
 const statusStyles = {
@@ -95,6 +96,8 @@ export function Activities() {
   const [customers, setCustomers] = useState([]);
   const [assignees, setAssignees] = useState([]);
   const [formContacts, setFormContacts] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [checkinActivity, setCheckinActivity] = useState(null);
   const canAssign = hasPermission("activities.assign");
 
   const statusOptions = ["", "Pendiente", "Programada", "VENCIDA", "Completada", "Cancelada"];
@@ -229,6 +232,48 @@ export function Activities() {
     }
   };
 
+  const handleCompleteWithCheckin = async (activityId, lat, lon, notes) => {
+    try {
+      await completarActividad(activityId, "Completada", lat, lon, notes);
+      setCheckinActivity(null);
+      setSelectedActivity(null);
+      fetchActivities();
+    } catch (err) {
+      alert(err?.message || "Error al completar actividad");
+    }
+  };
+
+  const handleCompleteWithoutLocation = async (activityId, notes) => {
+    try {
+      await completarActividad(activityId, "Completada", null, null, notes);
+      setCheckinActivity(null);
+      setSelectedActivity(null);
+      fetchActivities();
+    } catch (err) {
+      alert(err?.message || "Error al completar actividad");
+    }
+  };
+
+  const handleStatusChange = async (activityId, newStatus) => {
+    try {
+      await actualizarActividad({
+        ACTIVITY_ID: activityId,
+        TYPE: selectedActivity.TYPE,
+        SUBJECT: selectedActivity.SUBJECT,
+        NOTES: selectedActivity.NOTES || "",
+        DUE_AT: selectedActivity.DUE_AT || null,
+        PRIORITY: selectedActivity.PRIORITY,
+        CUSTOMER_ID: selectedActivity.CUSTOMER_ID,
+        CONTACT_ID: selectedActivity.CONTACT_ID || null,
+        OPPORTUNITY_ID: selectedActivity.OPPORTUNITY_ID || null,
+      });
+      setSelectedActivity(prev => ({ ...prev, STATUS: newStatus }));
+      fetchActivities();
+    } catch (err) {
+      alert(err?.message || "Error al cambiar estado");
+    }
+  };
+
   const openEdit = (activity) => {
     setEditingActivity({
       ACTIVITYID: activity.ACTIVITYID,
@@ -241,6 +286,41 @@ export function Activities() {
       CUSTOMER_ID: activity.CUSTOMER_ID,
     });
   };
+
+  useEffect(() => {
+    if (!selectedActivity?.CUSTOMER_ID) {
+      setSelectedCustomer(null);
+      return;
+    }
+    const fetchCustomerData = async () => {
+      try {
+        const res = await getClientes(
+          selectedActivity.CUSTOMER_ID,
+          "",
+          "",
+          "",
+          "",
+          1,
+          1,
+          ""
+        );
+        const data = res.data || res;
+        const customer = Array.isArray(data) ? data[0] : data;
+        if (customer) {
+          setSelectedCustomer({
+            NOMBRECLI: customer.NOMBRECLI || customer.customer_name,
+            LAT: customer.LAT || customer.latitude,
+            LON: customer.LON || customer.longitude,
+          });
+        } else {
+          setSelectedCustomer(null);
+        }
+      } catch {
+        setSelectedCustomer(null);
+      }
+    };
+    fetchCustomerData();
+  }, [selectedActivity?.CUSTOMER_ID]);
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -479,15 +559,26 @@ export function Activities() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Estado</label>
-                      <p className="mt-1">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            statusStyles[selectedActivity.STATUS] || "bg-gray-100 text-gray-800"
-                          }`}
+                      {(selectedActivity.STATUS === "Pendiente" || selectedActivity.STATUS === "Programada") && hasPermission("activities.update") ? (
+                        <select
+                          value={selectedActivity.STATUS}
+                          onChange={(e) => handleStatusChange(selectedActivity.ACTIVITYID, e.target.value)}
+                          className="mt-1 border rounded px-2 py-1 text-sm"
                         >
-                          {selectedActivity.STATUS}
-                        </span>
-                      </p>
+                          <option value="Pendiente">Pendiente</option>
+                          <option value="Programada">Programada</option>
+                        </select>
+                      ) : (
+                        <p className="mt-1">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              statusStyles[selectedActivity.STATUS] || "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {selectedActivity.STATUS}
+                          </span>
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -520,13 +611,23 @@ export function Activities() {
                       <FiXCircle className="inline mr-1" />
                       Cancelar
                     </button>
-                    <button
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                      onClick={() => handleComplete(selectedActivity.ACTIVITYID, "Completada")}
-                    >
-                      <FiCheckCircle className="inline mr-1" />
-                      Marcar como completada
-                    </button>
+                    {(selectedActivity.TYPE === "Visita" || selectedActivity.TYPE === "Reunion") ? (
+                      <button
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
+                        onClick={() => setCheckinActivity(selectedActivity)}
+                      >
+                        <FiCheckCircle className="mr-1" />
+                        Completar con check-in
+                      </button>
+                    ) : (
+                      <button
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        onClick={() => handleComplete(selectedActivity.ACTIVITYID, "Completada")}
+                      >
+                        <FiCheckCircle className="inline mr-1" />
+                        Marcar como completada
+                      </button>
+                    )}
                   </>
                 )}
                 {(selectedActivity.STATUS === "Completada" || selectedActivity.STATUS === "Cancelada") && hasPermission("activities.update") && (
@@ -542,6 +643,16 @@ export function Activities() {
           </div>
         )}
       </div>
+
+      {checkinActivity && (
+        <CheckinModal
+          activity={checkinActivity}
+          customer={selectedCustomer}
+          onClose={() => setCheckinActivity(null)}
+          onConfirm={(lat, lon, notes) => handleCompleteWithCheckin(checkinActivity.ACTIVITYID, lat, lon, notes)}
+          onCompleteWithoutLocation={(notes) => handleCompleteWithoutLocation(checkinActivity.ACTIVITYID, notes)}
+        />
+      )}
     </div>
   );
 }

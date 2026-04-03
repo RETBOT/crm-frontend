@@ -1,22 +1,44 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster/dist/leaflet.markercluster.js';
 import L from 'leaflet';
-import { FiMapPin, FiSearch } from 'react-icons/fi';
+import { FiMapPin, FiSearch, FiNavigation, FiX, FiCheck, FiMinus, FiMap, FiTrash2, FiLoader } from 'react-icons/fi';
 import { getClientes, getRutas, getSucursales } from '../../api/accounts';
 
-const customIcon = new L.Icon({
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+const STATUS_COLORS = {
+  ACTIVO: '#22c55e',
+  INACTIVO: '#9ca3af',
+};
+
+function createCustomIcon(estatus) {
+  const color = STATUS_COLORS[estatus] || '#3b82f6';
+
+  return L.divIcon({
+    html: `<svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12.5 0C5.6 0 0 5.6 0 12.5c0 9.4 12.5 28.5 12.5 28.5s12.5-19.1 12.5-28.5C25 5.6 19.4 0 12.5 0z" fill="${color}"/>
+      <circle cx="12.5" cy="12.5" r="5" fill="white"/>
+    </svg>`,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    className: ''
+  });
+}
+
+function createNumberedIcon(number) {
+  return L.divIcon({
+    html: `<svg width="28" height="28" viewBox="0 0 28 28">
+      <circle cx="14" cy="14" r="14" fill="#2563eb"/>
+      <text x="14" y="14" text-anchor="middle" dominant-baseline="central" fill="white" font-size="13" font-weight="bold" font-family="sans-serif">${number}</text>
+    </svg>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    className: ''
+  });
+}
 
 const normalizeId = (value) => (value === undefined || value === null ? '' : String(value));
 
@@ -57,7 +79,228 @@ function createPopupContent(cliente, rutas) {
     container.appendChild(tel);
   }
 
+  const statusBadge = document.createElement('span');
+  statusBadge.className = `inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
+    cliente.ESTATUS === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+  }`;
+  statusBadge.textContent = cliente.ESTATUS || 'DESCONOCIDO';
+  container.appendChild(statusBadge);
+
   return container;
+}
+
+function LocateControl({ onLocationFound }) {
+  const map = useMap();
+  const [locating, setLocating] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleClick = () => {
+    setLocating(true);
+    setError('');
+    if (!navigator.geolocation) {
+      setError('Geolocalización no soportada');
+      setLocating(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        map.flyTo([latitude, longitude], 16, { duration: 0.8 });
+        onLocationFound([latitude, longitude]);
+        setLocating(false);
+      },
+      () => {
+        setError('No se pudo obtener tu ubicación');
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  return (
+    <div className="absolute bottom-6 right-6 z-[1000] flex flex-col items-end gap-2">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg shadow flex items-center gap-2">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">
+            <FiX size={12} />
+          </button>
+        </div>
+      )}
+      <button
+        onClick={handleClick}
+        disabled={locating}
+        className="bg-white hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg shadow-lg border border-gray-200 text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+        title="Centrar en mi ubicación"
+      >
+        <FiNavigation className={locating ? 'animate-spin' : ''} size={16} />
+        {locating ? 'Ubicando...' : 'Mi ubicación'}
+      </button>
+    </div>
+  );
+}
+
+async function geocodeAddress(query) {
+  const url = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
+    q: query,
+    format: 'json',
+    limit: 1,
+    addressdetails: 1,
+  })}`;
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'RETFlow-CRM/1.0' },
+  });
+  const data = await response.json();
+  if (data.length === 0) return null;
+  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+}
+
+function UserLocationMarker({ location }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!location) return;
+    const icon = L.divIcon({
+      html: `<svg width="20" height="20" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="10" fill="#3b82f6" opacity="0.3"/>
+        <circle cx="10" cy="10" r="6" fill="#3b82f6"/>
+        <circle cx="10" cy="10" r="3" fill="white"/>
+      </svg>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+      className: ''
+    });
+    const marker = L.marker(location, { icon, zIndexOffset: 1000 })
+      .bindPopup('<strong>Tu ubicación</strong>')
+      .addTo(map);
+    return () => map.removeLayer(marker);
+  }, [location, map]);
+  return null;
+}
+
+function MapSearchBar() {
+  const map = useMap();
+  const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+
+  const handleSearch = async () => {
+    if (!query.trim()) return;
+    setSearching(true);
+    setNotFound(false);
+    try {
+      const result = await geocodeAddress(query);
+      if (result) {
+        map.flyTo([result.lat, result.lng], 16, { duration: 0.8 });
+        setNotFound(false);
+      } else {
+        setNotFound(true);
+      }
+    } catch {
+      setNotFound(true);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleSearch();
+  };
+
+  return (
+    <div className="absolute top-4 right-4 z-[800] flex flex-col gap-2">
+      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 flex gap-2">
+        <FiSearch className="text-gray-400 self-center ml-1" size={16} />
+        <input
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setNotFound(false); }}
+          onKeyDown={handleKeyDown}
+          placeholder="Buscar dirección..."
+          className="px-2 py-1.5 border-0 outline-none text-sm w-56 focus:ring-0"
+        />
+        <button
+          onClick={handleSearch}
+          disabled={searching || !query.trim()}
+          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium disabled:opacity-50 transition-colors"
+        >
+          {searching ? '...' : 'Buscar'}
+        </button>
+      </div>
+      {notFound && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg shadow flex items-center gap-2">
+          <span>No se encontró la dirección</span>
+          <button onClick={() => setNotFound(false)} className="text-red-400 hover:text-red-600">
+            <FiX size={12} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RouteLayer({ routeResult }) {
+  const map = useMap();
+  const layersRef = useRef([]);
+
+  useEffect(() => {
+    layersRef.current.forEach((layer) => map.removeLayer(layer));
+    layersRef.current = [];
+
+    if (!routeResult) return;
+
+    if (routeResult.type === 'osrm' && routeResult.geometry) {
+      const polyline = L.geoJSON(routeResult.geometry, {
+        style: { color: '#2563eb', weight: 5, opacity: 0.8 },
+      }).addTo(map);
+      layersRef.current.push(polyline);
+    } else if (routeResult.type === 'fallback') {
+      routeResult.coords.forEach((pair, i) => {
+        if (i < routeResult.coords.length - 1) {
+          const line = L.polyline([pair, routeResult.coords[i + 1]], {
+            color: '#9ca3af',
+            weight: 3,
+            dashArray: '8, 8',
+            opacity: 0.7,
+          }).addTo(map);
+          layersRef.current.push(line);
+        }
+      });
+    }
+
+    if (routeResult.markers) {
+      routeResult.markers.forEach(({ coord, number, label }) => {
+        const marker = L.marker(coord, { icon: createNumberedIcon(number), zIndexOffset: 2000 })
+          .bindPopup(`<strong>${label || `Parada ${number}`}</strong>`)
+          .addTo(map);
+        layersRef.current.push(marker);
+      });
+    }
+
+    return () => {
+      layersRef.current.forEach((layer) => map.removeLayer(layer));
+      layersRef.current = [];
+    };
+  }, [routeResult, map]);
+
+  return null;
+}
+
+function MapStatePersister({ onMapStateChange }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const handleMove = () => {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      onMapStateChange({ lat: center.lat, lng: center.lng, zoom });
+    };
+
+    map.on('moveend zoomend', handleMove);
+    return () => {
+      map.off('moveend zoomend', handleMove);
+    };
+  }, [map, onMapStateChange]);
+
+  return null;
 }
 
 function MarkerClusterLayer({ clientesConCoordenadas, rutas, markersRef, clienteSeleccionado }) {
@@ -94,7 +337,8 @@ function MarkerClusterLayer({ clientesConCoordenadas, rutas, markersRef, cliente
 
       if (Number.isNaN(lat) || Number.isNaN(lng)) return;
 
-      const marker = L.marker([lat, lng], { icon: customIcon });
+      const icon = createCustomIcon(cliente.ESTATUS);
+      const marker = L.marker([lat, lng], { icon });
       const popupContent = createPopupContent(cliente, rutas);
 
       marker.bindPopup(L.popup({ maxWidth: 300, minWidth: 200 }).setContent(popupContent));
@@ -133,23 +377,159 @@ function MarkerClusterLayer({ clientesConCoordenadas, rutas, markersRef, cliente
   return null;
 }
 
+async function calculateOptimalRoute(selectedClients, userLocation) {
+  let allPoints = [...selectedClients];
+
+  if (userLocation) {
+    allPoints = [
+      { NOMBRECLI: 'Tu ubicación', LAT: userLocation[0], LON: userLocation[1], _isUser: true },
+      ...selectedClients,
+    ];
+  }
+
+  const coords = allPoints
+    .filter(hasCoordinates)
+    .map((c) => [parseFloat(c.LON), parseFloat(c.LAT)]);
+
+  if (coords.length < 2) return null;
+
+  const coordString = coords.map(([lon, lat]) => `${lon},${lat}`).join(';');
+  const url = `http://router.project-osrm.org/trip/v1/driving/${coordString}?overview=full&geometries=geojson&steps=true&source=first`;
+
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!response.ok) throw new Error('OSRM error');
+    const data = await response.json();
+
+    if (data.code !== 'Ok' || !data.trips?.[0]) throw new Error('No route found');
+
+    const trip = data.trips[0];
+    const waypoints = data.waypoints || [];
+
+    const markers = waypoints.map((wp, i) => ({
+      coord: [wp.location[1], wp.location[0]],
+      number: i + 1,
+      label: allPoints[i]?._isUser ? 'Tu ubicación' : `Parada ${i + 1}`,
+    }));
+
+    const legs = trip.legs || [];
+    const segments = legs.map((leg, i) => ({
+      from: allPoints[i]?.NOMBRECLI || `Punto ${i + 1}`,
+      to: allPoints[i + 1]?.NOMBRECLI || `Punto ${i + 2}`,
+      distance: (leg.distance / 1000).toFixed(1),
+      duration: Math.round(leg.duration / 60),
+    }));
+
+    const totalDistance = (trip.distance / 1000).toFixed(1);
+    const totalDuration = Math.round(trip.duration / 60);
+
+    return {
+      type: 'osrm',
+      geometry: trip.geometry,
+      markers,
+      segments,
+      totalDistance,
+      totalDuration,
+    };
+  } catch {
+    const fallbackCoords = coords.map(([lon, lat]) => [lat, lon]);
+    const markers = fallbackCoords.map((coord, i) => ({
+      coord,
+      number: i + 1,
+      label: allPoints[i]?._isUser ? 'Tu ubicación' : `Parada ${i + 1}`,
+    }));
+
+    return {
+      type: 'fallback',
+      coords: fallbackCoords,
+      markers,
+      segments: allPoints.slice(0, -1).map((c, i) => ({
+        from: c.NOMBRECLI,
+        to: allPoints[i + 1]?.NOMBRECLI || 'Final',
+        distance: 'N/A',
+        duration: 'N/A',
+      })),
+      totalDistance: 'N/A',
+      totalDuration: 'N/A',
+    };
+  }
+}
+
+function hasCoordinates(cliente) {
+  const lat = Number(cliente?.LAT);
+  const lon = Number(cliente?.LON);
+  return Number.isFinite(lat) && Number.isFinite(lon) && lat !== 0 && lon !== 0;
+}
+
+function getAddressText(cliente) {
+  return [cliente?.CALLE, cliente?.NUM_EXT, cliente?.COLONIA, cliente?.CIUDAD, cliente?.ESTADO]
+    .filter(Boolean)
+    .join(', ');
+}
+
+function openGoogleMapsByAddress(cliente) {
+  const address = getAddressText(cliente) || cliente?.NOMBRECLI;
+  const query = encodeURIComponent(address);
+  window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+}
+
+function readUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    lat: params.get('lat') ? parseFloat(params.get('lat')) : null,
+    lng: params.get('lng') ? parseFloat(params.get('lng')) : null,
+    zoom: params.get('z') ? parseInt(params.get('z')) : null,
+    search: params.get('search') || '',
+    sucursal: params.get('sucursal') || '',
+    ruta: params.get('ruta') || '',
+    status: params.get('status') || '',
+    page: params.get('page') ? parseInt(params.get('page')) : 1,
+  };
+}
+
+function writeUrlParams(params) {
+  const searchParams = new URLSearchParams();
+  if (params.lat) searchParams.set('lat', params.lat.toFixed(6));
+  if (params.lng) searchParams.set('lng', params.lng.toFixed(6));
+  if (params.zoom) searchParams.set('z', params.zoom);
+  if (params.search) searchParams.set('search', params.search);
+  if (params.sucursal) searchParams.set('sucursal', params.sucursal);
+  if (params.ruta) searchParams.set('ruta', params.ruta);
+  if (params.status) searchParams.set('status', params.status);
+  if (params.page && params.page > 1) searchParams.set('page', params.page);
+
+  const newUrl = `${window.location.pathname}?${searchParams.toString()}`;
+  window.history.replaceState({}, '', newUrl);
+}
+
 export function Maps() {
+  const urlParams = readUrlParams();
+
   const [clientes, setClientes] = useState([]);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(urlParams.page);
   const [totalPaginas, setTotalPaginas] = useState(1);
+  const [totalRegs, setTotalRegs] = useState(0);
   const [sucursales, setSucursales] = useState([]);
   const [rutas, setRutas] = useState([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
+  const [selectedClients, setSelectedClients] = useState(new Set());
+  const [routeResult, setRouteResult] = useState(null);
+  const [routeLoading, setRouteLoading] = useState(false);
   const [filters, setFilters] = useState({
-    searchTerm: '',
-    status: '',
-    sucursal: '',
-    salesRep: ''
+    searchTerm: urlParams.search,
+    status: urlParams.status,
+    sucursal: urlParams.sucursal,
+    salesRep: urlParams.ruta,
   });
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(urlParams.search);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [initialCenter] = useState([25.5878, -103.3809]);
+  const [initialCenter] = useState([
+    urlParams.lat || 25.5878,
+    urlParams.lng || -103.3809,
+  ]);
+  const [initialZoom] = useState(urlParams.zoom || 13);
+  const [userLocation, setUserLocation] = useState(null);
   const markersRef = useRef({});
 
   useEffect(() => {
@@ -178,15 +558,18 @@ export function Maps() {
         );
         const clientesData = res.data || res;
         const totalPaginasData = res.tot_pags || 1;
+        const totalRegsData = res.total_regs || 0;
         const formattedData = Array.isArray(clientesData) ? clientesData : [clientesData];
 
         setClientes(formattedData);
         setTotalPaginas(totalPaginasData);
+        setTotalRegs(totalRegsData);
       } catch (fetchError) {
         console.error('Error al cargar clientes:', fetchError);
         setError(fetchError?.message || 'No se pudieron cargar los clientes');
         setClientes([]);
         setTotalPaginas(1);
+        setTotalRegs(0);
       } finally {
         setLoading(false);
       }
@@ -242,7 +625,20 @@ export function Maps() {
     }
   }, [clientes, clienteSeleccionado]);
 
-  const handleFilterChange = (key, value) => {
+  useEffect(() => {
+    writeUrlParams({
+      lat: initialCenter[0],
+      lng: initialCenter[1],
+      zoom: initialZoom,
+      search: filters.searchTerm,
+      sucursal: filters.sucursal,
+      ruta: filters.salesRep,
+      status: filters.status,
+      page,
+    });
+  }, [initialCenter, initialZoom, filters, page]);
+
+  const handleFilterChange = useCallback((key, value) => {
     const normalizedValue = value === 'all' ? '' : value;
 
     setPage(1);
@@ -258,28 +654,64 @@ export function Maps() {
 
       return nextFilters;
     });
+  }, []);
+
+  const handleMapStateChange = useCallback((state) => {
+    writeUrlParams({
+      lat: state.lat,
+      lng: state.lng,
+      zoom: state.zoom,
+      search: filters.searchTerm,
+      sucursal: filters.sucursal,
+      ruta: filters.salesRep,
+      status: filters.status,
+      page,
+    });
+  }, [filters, page]);
+
+  const toggleClientSelection = useCallback((clientId) => {
+    setSelectedClients((prev) => {
+      const next = new Set(prev);
+      if (next.has(clientId)) {
+        next.delete(clientId);
+      } else {
+        next.add(clientId);
+      }
+      return next;
+    });
+    setRouteResult(null);
+  }, []);
+
+  const handleCalculateRoute = async () => {
+    const selected = clientes.filter((c) => selectedClients.has(c.CLIENTEID) && hasCoordinates(c));
+    const minClients = userLocation ? 1 : 2;
+    if (selected.length < minClients) return;
+
+    setRouteLoading(true);
+    setRouteResult(null);
+    try {
+      const result = await calculateOptimalRoute(selected, userLocation);
+      setRouteResult(result);
+    } catch {
+      setRouteResult(null);
+    } finally {
+      setRouteLoading(false);
+    }
   };
 
-  const hasCoordinates = (cliente) => {
-    const lat = Number(cliente?.LAT);
-    const lon = Number(cliente?.LON);
-    return Number.isFinite(lat) && Number.isFinite(lon) && lat !== 0 && lon !== 0;
-  };
-
-  const getAddressText = (cliente) =>
-    [cliente?.CALLE, cliente?.NUM_EXT, cliente?.COLONIA, cliente?.CIUDAD, cliente?.ESTADO]
-      .filter(Boolean)
-      .join(', ');
-
-  const openGoogleMapsByAddress = (cliente) => {
-    const address = getAddressText(cliente) || cliente?.NOMBRECLI;
-    const query = encodeURIComponent(address);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+  const handleClearRoute = () => {
+    setSelectedClients(new Set());
+    setRouteResult(null);
   };
 
   const clientesConCoordenadas = useMemo(
     () => clientes.filter((cliente) => hasCoordinates(cliente)),
     [clientes]
+  );
+
+  const selectedClientsCount = selectedClients.size;
+  const selectedClientsWithCoords = clientes.filter(
+    (c) => selectedClients.has(c.CLIENTEID) && hasCoordinates(c)
   );
 
   return (
@@ -342,6 +774,69 @@ export function Maps() {
               ))}
             </select>
           </div>
+
+          {selectedClientsCount >= (userLocation ? 1 : 2) && (
+            <div className="flex gap-2 mb-2">
+              <button
+                onClick={handleCalculateRoute}
+                disabled={routeLoading || selectedClientsWithCoords.length < (userLocation ? 1 : 2)}
+                className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium disabled:opacity-50 transition-colors"
+              >
+                {routeLoading ? (
+                  <FiLoader className="animate-spin" size={16} />
+                ) : (
+                  <FiMap size={16} />
+                )}
+                {routeLoading ? 'Calculando...' : userLocation ? 'Calcular ruta desde mi ubicación' : 'Calcular ruta óptima'}
+              </button>
+              <button
+                onClick={handleClearRoute}
+                className="flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded text-sm transition-colors"
+                title="Limpiar selección"
+              >
+                <FiTrash2 size={16} />
+              </button>
+            </div>
+          )}
+
+          {routeResult && (
+            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-blue-800 flex items-center gap-1">
+                  <FiMap size={14} /> Ruta calculada
+                  {routeResult.type === 'fallback' && (
+                    <span className="text-xs text-amber-600 font-normal">(directa)</span>
+                  )}
+                </h4>
+                <span className="text-xs text-blue-600">
+                  {routeResult.totalDistance !== 'N/A' ? `${routeResult.totalDistance} km` : ''}
+                  {routeResult.totalDuration !== 'N/A' ? ` · ${routeResult.totalDuration} min` : ''}
+                </span>
+              </div>
+              {routeResult.type === 'fallback' && (
+                <p className="text-xs text-amber-700 mb-2">
+                  Servidor de enrutamiento no disponible. Mostrando ruta directa.
+                </p>
+              )}
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {routeResult.segments.map((seg, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className="font-bold text-blue-700 w-5">{i + 1}.</span>
+                    <span className="flex-1 truncate">{seg.from}</span>
+                    {seg.distance !== 'N/A' && (
+                      <span className="text-gray-500 whitespace-nowrap">{seg.distance} km · {seg.duration} min</span>
+                    )}
+                  </div>
+                ))}
+                {routeResult.segments.length > 0 && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="font-bold text-blue-700 w-5">{routeResult.segments.length + 1}.</span>
+                    <span className="flex-1 truncate">{routeResult.segments[routeResult.segments.length - 1]?.to}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-4">
@@ -349,6 +844,13 @@ export function Maps() {
             <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
+          )}
+
+          {totalRegs > 0 && (
+            <p className="text-xs text-gray-500 mb-3">
+              Mostrando {clientes.length} de {totalRegs} clientes
+              {selectedClientsCount > 0 && ` · ${selectedClientsCount} seleccionados`}
+            </p>
           )}
 
           {loading ? (
@@ -359,31 +861,70 @@ export function Maps() {
             <div className="text-center py-8 text-gray-500">No se encontraron clientes</div>
           ) : (
             <ul className="space-y-2">
-              {clientes.map((cliente) => (
-                <li
-                  key={cliente.CLIENTEID}
-                  className="p-3 mb-2 border rounded hover:bg-blue-50 cursor-pointer transition-colors"
-                  onClick={() => {
-                    if (hasCoordinates(cliente)) {
-                      setClienteSeleccionado(cliente);
-                      return;
-                    }
+              {clientes.map((cliente) => {
+                const isSelected = selectedClients.has(cliente.CLIENTEID);
+                const hasCoords = hasCoordinates(cliente);
 
-                    openGoogleMapsByAddress(cliente);
-                  }}
-                >
-                  <h3 className="font-bold">{cliente.NOMBRECLI}</h3>
-                  <p className="text-sm text-gray-600">{cliente.GIRO}</p>
-                  {hasCoordinates(cliente) ? (
-                    <p className="text-xs text-gray-500 mt-1">
-                      <FiMapPin className="inline mr-1" />
-                      {parseFloat(cliente.LAT).toFixed(4)}, {parseFloat(cliente.LON).toFixed(4)}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-amber-600 mt-1">Sin coordenadas, se abre por direccion</p>
-                  )}
-                </li>
-              ))}
+                return (
+                  <li
+                    key={cliente.CLIENTEID}
+                    className={`p-3 mb-2 border rounded transition-colors ${
+                      normalizeId(clienteSeleccionado?.CLIENTEID) === normalizeId(cliente.CLIENTEID)
+                        ? 'bg-blue-50 border-blue-300'
+                        : isSelected
+                          ? 'bg-green-50 border-green-300'
+                          : 'hover:bg-blue-50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (hasCoords) toggleClientSelection(cliente.CLIENTEID);
+                        }}
+                        disabled={!hasCoords}
+                        className={`mt-0.5 flex-shrink-0 ${!hasCoords ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                        title={hasCoords ? (isSelected ? 'Deseleccionar' : 'Seleccionar para ruta') : 'Sin coordenadas'}
+                      >
+                        {isSelected ? (
+                          <FiCheck size={18} className="text-green-600" />
+                        ) : (
+                          <FiMinus size={18} className="text-gray-400" />
+                        )}
+                      </button>
+
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => {
+                          if (hasCoords) {
+                            setClienteSeleccionado(cliente);
+                          } else {
+                            openGoogleMapsByAddress(cliente);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-bold">{cliente.NOMBRECLI}</h3>
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                            cliente.ESTATUS === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {cliente.ESTATUS || 'DESCONOCIDO'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{cliente.GIRO}</p>
+                        {hasCoords ? (
+                          <p className="text-xs text-gray-500 mt-1">
+                            <FiMapPin className="inline mr-1" />
+                            {parseFloat(cliente.LAT).toFixed(4)}, {parseFloat(cliente.LON).toFixed(4)}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-amber-600 mt-1">Sin coordenadas, se abre por dirección</p>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -407,12 +948,18 @@ export function Maps() {
         </div>
       </div>
 
-      <div className="w-full md:w-2/3 h-1/2 md:h-full">
-        <MapContainer center={initialCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
+      <div className="w-full md:w-2/3 h-1/2 md:h-full relative">
+        <MapContainer center={initialCenter} zoom={initialZoom} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
+
+          <MapStatePersister onMapStateChange={handleMapStateChange} />
+          <MapSearchBar />
+          <LocateControl onLocationFound={setUserLocation} />
+          <UserLocationMarker location={userLocation} />
+          <RouteLayer routeResult={routeResult} />
 
           <MarkerClusterLayer
             clientesConCoordenadas={clientesConCoordenadas}

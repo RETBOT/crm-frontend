@@ -7,7 +7,8 @@ export const ContactForm = ({
   puestos = [],
   onSave, 
   onCancel,
-  isEditing 
+  isEditing,
+  saving = false,
 }) => {
   const [formData, setFormData] = useState({
     NOMBRE: initialData.NOMBRE || "",
@@ -83,14 +84,6 @@ export const ContactForm = ({
 
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">Puesto</label>
-          {/* <input
-            type="text"
-            name="PUESTOID"
-            value={formData.PUESTOID}
-            onChange={handleChange}
-            className="w-full border rounded p-2"
-          /> */}
-
           <select
             name="PUESTOID"
             className="w-full border rounded p-2"
@@ -104,8 +97,6 @@ export const ContactForm = ({
               </option>
             ))}
           </select>
-
-
         </div>
 
         <div className="space-y-2">
@@ -189,10 +180,11 @@ export const ContactForm = ({
         </button>
         <button
           type="submit"
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          disabled={saving}
         >
           <FiSave className="mr-2" />
-          Guardar
+          {saving ? "Guardando..." : "Guardar"}
         </button>
       </div>
     </form>

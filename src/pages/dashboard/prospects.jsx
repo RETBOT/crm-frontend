@@ -1,20 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiFileText, FiCalendar, FiDollarSign, FiCheckCircle, FiXCircle, FiPlus, FiMenu, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import { getClientes, getContactos, getSucursales, getRutas, getPuestos, contactos_ABC, clientes_ABC, convertirProspecto } from "../../api/accounts";
 import { getOpportunitiesByCustomer } from "../../api/opportunities";
 import { ContactForm, CustomerForm, ActivityList, Notification } from "../../components/index";
 import { hasPermission } from "../../utils/auth";
 
-function getTareas(clienteid) {
-  return [
-    { id: 1, description: "Seguimiento de la propuesta", dueDate: "2023-06-05", assignedTo: "1 LAGUNA", completed: false },
-    { id: 2, description: "Programar demostración", dueDate: "2023-06-12", assignedTo: "1 LAGUNA", completed: false }
-  ];
-}
-
 export function Prospects() {
   /********************ESTADOS****************************************************************************************************************** */
-  const [accounts2, setAccounts2] = useState([]);
+  const [prospects, setProspects] = useState([]);
   const [sucursales, setSucursales] = useState([]);
   const [rutas, setRutas] = useState([]);
   const [puestos, setPuestos] = useState([]);
@@ -28,51 +21,60 @@ export function Prospects() {
   const [error, setError] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
-  
+  const [savingContact, setSavingContact] = useState(false);
+  const [savingProspect, setSavingProspect] = useState(false);
 
   const [showContactForm, setShowContactForm] = useState(false);
   const [showProspectForm, setShowProspectForm] = useState(false);
   const [editingProspect, setEditingProspect] = useState(null);
   const [editingContact, setEditingContact] = useState(null);
-  const [deletingContact, setDeletingContact] = useState(null);
   const [notification, setNotification] = useState({
     show: false,
     message: "",
-    type: "success" // success, error, warning
+    type: "success"
   });
 
+  /********************DEBOUNCE BÚSQUEDA****************************************************************************************************************** */
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (debouncedSearch !== filters.searchTerm) {
+      setPage(1);
+      setFilters(prev => ({ ...prev, searchTerm: debouncedSearch }));
+    }
+  }, [debouncedSearch]);
+
   /********************PETICIONES****************************************************************************************************************** */
-  useEffect(() => { setPage(1); fetchClientes(); }, [filters]);
-  useEffect(() => { fetchClientes(); }, [page]);
+  useEffect(() => { fetchProspects(); }, [filters, page]);
   useEffect(() => { fetchRutas(); }, [filters.sucursal]);
   useEffect(() => { fetchSucursales(); fetchRutas(); fetchPuestos(); }, []);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768);
-    };
+    const handleResize = () => setIsMobileView(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-
-  const fetchClientes = async () => {
+  const fetchProspects = async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await getClientes(0, filters.searchTerm, filters.sucursal, filters.status, filters.salesRep, page, 0, 'PROSPECTO');
-      
-      const clientesData = res.data || res;
+      const prospectsData = res.data || res;
       const total_paginas = res.tot_pags || 1;
-    
-      const dataArray = Array.isArray(clientesData) ? clientesData : [clientesData];
-      
-      setAccounts2(dataArray);
+      const dataArray = Array.isArray(prospectsData) ? prospectsData : [prospectsData];
+      setProspects(dataArray);
       setTotalPaginas(total_paginas);
     } catch (e) {
-      console.error("Error al obtener clientes:", e);
-      setError("Error al cargar los clientes. Intente nuevamente.");
-      setAccounts2([]);
+      console.error("Error al obtener prospectos:", e);
+      setError("Error al cargar los prospectos. Intente nuevamente.");
+      setProspects([]);
     } finally {
       setLoading(false);
     }
@@ -81,15 +83,12 @@ export function Prospects() {
   const fetchContactos = async (CLIENTEID) => {
     try {
       const res = await getContactos(CLIENTEID);
-      
-      const contactoData = res.data || res;
-      const dataArray = Array.isArray(contactoData) ? contactoData : [contactoData];
-      
-      return dataArray;
+      const data = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      return data;
     } catch (e) {
       console.error("Error al obtener contactos:", e);
       return [];
-    } 
+    }
   };
 
   const fetchSucursales = async () => {
@@ -114,49 +113,6 @@ export function Prospects() {
     }
   };
 
-
-  /********************FUNCIONES****************************************************************************************************************** */
- 
-
-    // Función para mostrar notificación
-  const showNotification = (message, type = "success") => {
-    setNotification({
-      show: true,
-      message,
-      type
-    });
-  };
-  // Función para cerrar notificación
-  const closeNotification = () => {
-    setNotification(prev => ({ ...prev, show: false }));
-  };
-  
-  const handleFilterChange = (k, v) => {
-    setPage(1);
-    setFilters(prev => ({ ...prev, [k]: v === "all" ? "" : v }));
-  };
-
-
-  const loadTabData = async (cliente, tab) => {
-    setLoadingTab(true);
-    try {
-      let data;
-      if (tab === "Contactos") data = await fetchContactos(cliente.CLIENTEID);
-      if (tab === "Oportunidades") data = await getOpportunitiesByCustomer(cliente.customer_id || cliente.CLIENTEID);
-      if (tab !== "Actividades") setSelectedAccount(prev => ({ ...prev, [tab]: data }));
-    } catch (e) { 
-      console.error(e); 
-    } finally {
-      setLoadingTab(false);
-    }
-  };
-
-  const handleSelect = account => {
-    setSelectedAccount({ ...account, Contactos: [], Oportunidades: [], Actividades: [] });
-    setActiveTab("Detalles");
-    loadTabData(account, "Detalles");
-  };
-
   const fetchPuestos = async () => {
     try {
       const res = await getPuestos("");
@@ -168,12 +124,47 @@ export function Prospects() {
     }
   };
 
+  /********************FUNCIONES****************************************************************************************************************** */
+  const showNotification = (message, type = "success") => {
+    setNotification({ show: true, message, type });
+  };
+
+  const closeNotification = () => {
+    setNotification(prev => ({ ...prev, show: false }));
+  };
+
+  const handleFilterChange = (k, v) => {
+    setPage(1);
+    setFilters(prev => ({ ...prev, [k]: v === "all" ? "" : v }));
+  };
+
+  const loadTabData = async (cliente, tab) => {
+    setLoadingTab(true);
+    try {
+      let data;
+      if (tab === "Contactos") data = await fetchContactos(cliente.CLIENTEID);
+      if (tab === "Oportunidades") data = await getOpportunitiesByCustomer(cliente.customer_id || cliente.CLIENTEID);
+      if (tab !== "Actividades" && tab !== "Detalles") setSelectedAccount(prev => ({ ...prev, [tab]: data }));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTab(false);
+    }
+  };
+
+  const handleSelect = account => {
+    setSelectedAccount({ ...account, Contactos: [], Oportunidades: [], Actividades: [] });
+    setActiveTab("Detalles");
+    loadTabData(account, "Detalles");
+  };
+
   const handleCreateProspect = async (customerData) => {
     if (!hasPermission("prospects.create")) {
       showNotification("No cuenta con permisos para crear prospectos", "error");
       return;
     }
 
+    setSavingProspect(true);
     try {
       const response = await clientes_ABC({
         ...customerData,
@@ -185,13 +176,15 @@ export function Prospects() {
         showNotification(response.msg || "Prospecto creado correctamente");
         setShowProspectForm(false);
         setPage(1);
-        await fetchClientes();
+        await fetchProspects();
         return;
       }
 
       showNotification(response.msg || "No se pudo crear el prospecto", "error");
     } catch (error) {
       showNotification(error.message || "Ocurrió un error al crear el prospecto", "error");
+    } finally {
+      setSavingProspect(false);
     }
   };
 
@@ -202,6 +195,7 @@ export function Prospects() {
       return;
     }
 
+    setSavingProspect(true);
     try {
       const response = await clientes_ABC({
         ...customerData,
@@ -214,13 +208,15 @@ export function Prospects() {
         showNotification(response.msg || "Prospecto actualizado correctamente");
         setEditingProspect(null);
         setSelectedAccount(null);
-        await fetchClientes();
+        await fetchProspects();
         return;
       }
 
       showNotification(response.msg || "No se pudo actualizar el prospecto", "error");
     } catch (error) {
       showNotification(error.message || "Ocurrió un error al actualizar el prospecto", "error");
+    } finally {
+      setSavingProspect(false);
     }
   };
 
@@ -243,7 +239,7 @@ export function Prospects() {
       if (response.resultado === 1) {
         showNotification(response.msg || "Prospecto inactivado correctamente");
         setSelectedAccount(null);
-        await fetchClientes();
+        await fetchProspects();
         return;
       }
 
@@ -265,7 +261,7 @@ export function Prospects() {
       if (response.resultado === 1) {
         showNotification(response.msg || "Prospecto convertido correctamente");
         setSelectedAccount(null);
-        await fetchClientes();
+        await fetchProspects();
         return;
       }
 
@@ -275,12 +271,85 @@ export function Prospects() {
     }
   };
 
-  
+  const handleSaveContact = useCallback(async (contactData) => {
+    if (!selectedAccount?.CLIENTEID) return;
+    setSavingContact(true);
+    try {
+      const tipo = editingContact ? "C" : "A";
+      const ID = editingContact ? editingContact.ID : 0;
+
+      const response = await contactos_ABC(
+        selectedAccount.CLIENTEID,
+        ID,
+        contactData.NOMBRE,
+        contactData.APATERNO,
+        contactData.AMATERNO,
+        contactData.TELEFONO,
+        contactData.EXTENSION,
+        contactData.PUESTOID,
+        contactData.COMENTARIOS,
+        contactData.WHATSAPP,
+        contactData.EMAIL,
+        tipo
+      );
+
+      if (response.resultado === 1) {
+        const updatedContacts = await fetchContactos(selectedAccount.CLIENTEID);
+        setSelectedAccount(prev => ({ ...prev, Contactos: updatedContacts }));
+        setShowContactForm(false);
+        setEditingContact(null);
+        showNotification(
+          editingContact ? "Contacto actualizado correctamente" : "Contacto creado correctamente"
+        );
+      } else {
+        showNotification(response.msg || "Operación no completada", "error");
+      }
+    } catch (error) {
+      console.error("Error al guardar contacto:", error);
+      showNotification(error.message || "Ocurrió un error al guardar el contacto", "error");
+    } finally {
+      setSavingContact(false);
+    }
+  }, [selectedAccount, editingContact]);
+
+  const handleDeleteContact = useCallback(async (contact) => {
+    if (!selectedAccount?.CLIENTEID) return;
+    if (!window.confirm(`¿Estás seguro de eliminar a ${contact.NOMBRE}?`)) return;
+
+    try {
+      const response = await contactos_ABC(
+        selectedAccount.CLIENTEID,
+        contact.ID,
+        contact.NOMBRE,
+        contact.APATERNO,
+        contact.AMATERNO,
+        contact.TELEFONO,
+        contact.EXTENSION,
+        contact.PUESTOID,
+        contact.COMENTARIOS,
+        contact.WHATSAPP,
+        contact.EMAIL,
+        "B"
+      );
+
+      if (response.resultado === 1) {
+        const updatedContacts = await fetchContactos(selectedAccount.CLIENTEID);
+        setSelectedAccount(prev => ({ ...prev, Contactos: updatedContacts }));
+        showNotification(response.msg || "Contacto eliminado correctamente");
+      } else {
+        showNotification(response.msg || "No se pudo eliminar el contacto", "error");
+      }
+    } catch (error) {
+      console.error("Error al eliminar contacto:", error);
+      showNotification(error.message || "Ocurrió un error al eliminar el contacto", "error");
+    }
+  }, [selectedAccount]);
+
   const renderTabContent = () => {
     if (loadingTab) return <LoadingSpinner />;
 
     const acc = selectedAccount;
-    if (!acc) return <EmptyState message="Seleccione un cliente" />;
+    if (!acc) return <EmptyState message="Seleccione un prospecto" />;
 
     switch (activeTab) {
       case "Detalles":
@@ -327,8 +396,8 @@ export function Prospects() {
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Estatus</label>
                 <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  acc.ESTATUS === "ACTIVO" 
-                    ? "bg-green-100 text-green-800" 
+                  acc.ESTATUS === "ACTIVO"
+                    ? "bg-green-100 text-green-800"
                     : "bg-gray-100 text-gray-800"
                 }`}>
                   {acc.ESTATUS || 'DESCONOCIDO'}
@@ -340,7 +409,7 @@ export function Prospects() {
               </div>
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Ruta</label>
-                <p className="text-gray-800">{acc.RUTA || 'No asignada'}</p>
+                <p className="text-gray-800">{acc.RUTAID ? `${acc.RUTAID} - ${acc.RUTA}` : (acc.RUTA || 'No asignada')}</p>
               </div>
               {selectedAccount.LAT !== 0 && selectedAccount.LON !== 0 && (
                 <div className="pt-2">
@@ -356,37 +425,37 @@ export function Prospects() {
             </div>
           </div>
         );
-      case "Análisis de Cliente": 
+      case "Análisis de Cliente":
         return (
           <div className="bg-white rounded-lg shadow-sm p-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Análisis de Cliente (Últimos 3 meses)</h3>
             <div className="space-y-4">
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Venta Neta</label>
-                <p className="text-gray-800 font-medium">{formatCurrency(acc.VENTA_NETA)}</p>
+                <p className="text-gray-800 font-medium">{formatCurrency(Number(acc.VENTA_NETA) || 0)}</p>
               </div>
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Margen</label>
-                <p className="text-gray-800">{formatPercent(acc.MARGEN)}</p>
+                <p className="text-gray-800">{formatPercent(Number(acc.MARGEN) || 0)}</p>
               </div>
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Línea de Crédito</label>
-                <p className="text-gray-800 font-medium">{formatCurrency(acc.LINEA_CREDITO)}</p>
+                <p className="text-gray-800 font-medium">{formatCurrency(Number(acc.LINEA_CREDITO) || 0)}</p>
               </div>
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Monto Ejercido</label>
-                <p className="text-gray-800">{formatCurrency(acc.MONTO_EJERCIDO)}</p>
+                <p className="text-gray-800">{formatCurrency(Number(acc.MONTO_EJERCIDO) || 0)}</p>
               </div>
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Cartera Vencida</label>
-                <p className={`font-medium ${acc.CARTERA_VENCIDA > 0 ? 'text-red-600' : 'text-gray-800'}`}>
-                  {formatCurrency(acc.CARTERA_VENCIDA)}
+                <p className={`font-medium ${(Number(acc.CARTERA_VENCIDA) || 0) > 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                  {formatCurrency(Number(acc.CARTERA_VENCIDA) || 0)}
                 </p>
               </div>
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Prom. Días Vencidos</label>
-                <p className={`font-medium ${acc.PROMEDIO_DIAS_VENCIDOS > 30 ? 'text-yellow-600' : 'text-gray-800'}`}>
-                  {acc.PROMEDIO_DIAS_VENCIDOS} días
+                <p className={`font-medium ${(Number(acc.PROMEDIO_DIAS_VENCIDOS) || 0) > 30 ? 'text-yellow-600' : 'text-gray-800'}`}>
+                  {Number(acc.PROMEDIO_DIAS_VENCIDOS) || 0} días
                 </p>
               </div>
               <div className="border-b pb-2">
@@ -394,12 +463,12 @@ export function Prospects() {
                 <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   acc.INACTIVOCV === "NO" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                 }`}>
-                  {acc.INACTIVOCV}
+                  {acc.INACTIVOCV || 'N/A'}
                 </span>
               </div>
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Retención de Pedido</label>
-                <p className="text-gray-800">{acc.RETENCION_PEDIDOS}</p>
+                <p className="text-gray-800">{acc.RETENCION_PEDIDOS || 'N/A'}</p>
               </div>
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Razón de Retención</label>
@@ -407,97 +476,18 @@ export function Prospects() {
               </div>
               <div className="border-b pb-2">
                 <label className="block text-sm font-medium text-gray-500 mb-1">Aseguranza</label>
-                <p className="text-gray-800">{acc.ASEGURANZA}</p>
+                <p className="text-gray-800">{acc.ASEGURANZA || 'N/A'}</p>
               </div>
             </div>
           </div>
         );
       case "Contactos":
-
-
-        const handleSaveContact = async (contactData) => {
-          try {
-            const tipo = editingContact ? "C" : "A";
-            const ID = editingContact ? editingContact.ID : 0;
-
-            const response = await contactos_ABC(
-              selectedAccount.CLIENTEID,
-              ID,
-              contactData.NOMBRE,
-              contactData.APATERNO,
-              contactData.AMATERNO,
-              contactData.TELEFONO,
-              contactData.EXTENSION,
-              contactData.PUESTOID,
-              contactData.COMENTARIOS,
-              contactData.WHATSAPP,
-              contactData.EMAIL,
-              tipo
-            );
-
-            if (response.resultado === 1) {
-              const updatedContacts = await fetchContactos(selectedAccount.CLIENTEID);
-              setSelectedAccount(prev => ({ ...prev, Contactos: updatedContacts }));
-              setShowContactForm(false);
-              setEditingContact(null);
-              showNotification(
-                editingContact ? "Contacto actualizado correctamente" : "Contacto creado correctamente"
-              );
-            } else {
-              showNotification(response.msg || "Operación no completada", "error");
-            }
-          } catch (error) {
-            console.error("Error al guardar contacto:", error);
-            showNotification(error.message || "Ocurrió un error al guardar el contacto", "error");
-          }
-        };
-
-        const handleDeleteContact = async (contact) => {
-          if (!window.confirm(`¿Estás seguro de eliminar a ${contact.NOMBRE}?`)) return;
-
-          try {
-            const response = await contactos_ABC(
-              selectedAccount.CLIENTEID,
-              contact.ID,
-              contact.NOMBRE,
-              contact.APATERNO,
-              contact.AMATERNO,
-              contact.TELEFONO,
-              contact.EXTENSION,
-              contact.PUESTOID,
-              contact.COMENTARIOS,
-              contact.WHATSAPP,
-              contact.EMAIL,
-              "B"
-            );
-
-            if (response.resultado === 1) {
-              const updatedContacts = await fetchContactos(selectedAccount.CLIENTEID);
-              setSelectedAccount(prev => ({ ...prev, Contactos: updatedContacts }));
-              showNotification(response.msg || "Contacto eliminado correctamente");
-            } else {
-              showNotification(response.msg || "No se pudo eliminar el contacto", "error");
-            }
-          } catch (error) {
-            console.error("Error al eliminar contacto:", error);
-            showNotification(error.message || "Ocurrió un error al eliminar el contacto", "error");
-          }
-        };
-
-
         return (
         <div className="bg-white rounded-lg shadow-sm p-4">
-          {notification.show && (
-            <Notification
-              message={notification.message}
-              type={notification.type}
-              onClose={closeNotification}
-            />
-          )}
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-800">Contactos</h3>
-            {!showContactForm && (
-              <button 
+            {!showContactForm && hasPermission("prospects.update") && (
+              <button
                 onClick={() => {
                   setEditingContact(null);
                   setShowContactForm(true);
@@ -519,45 +509,40 @@ export function Prospects() {
                 setEditingContact(null);
               }}
               isEditing={!!editingContact}
+              saving={savingContact}
             />
           ) : (
             <>
               {acc.Contactos?.length > 0 ? (
                 <div className="space-y-4">
                   {acc.Contactos.map((contacto, idx) => (
-                    <div key={idx} className="border rounded-lg p-4 shadow-sm relative">
+                    <div key={contacto.ID || idx} className="border rounded-lg p-4 shadow-sm relative">
                       <div className="absolute top-2 right-2 flex space-x-2">
-                        <button
-                          onClick={() => {
-                            setEditingContact(contacto);
-                            setShowContactForm(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-800 p-1"
-                          title="Editar"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteContact(contacto)}
-                          className="text-red-600 hover:text-red-800 p-1"
-                          title="Eliminar"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
-                        <p className="text-gray-800 font-semibold text-base flex items-center">
-                          <FiUser className="mr-2" />
-                          {contacto.PUESTO && (
-                          <span className="text-sm text-gray-500">{contacto.PUESTO}</span>
+                        {hasPermission("prospects.update") && (
+                          <button
+                            onClick={() => {
+                              setEditingContact(contacto);
+                              setShowContactForm(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 p-1"
+                            title="Editar"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                          </button>
                         )}
-                        </p>
-                        
+                        {hasPermission("prospects.delete") && (
+                          <button
+                            onClick={() => handleDeleteContact(contacto)}
+                            className="text-red-600 hover:text-red-800 p-1"
+                            title="Eliminar"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
 
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
@@ -566,6 +551,9 @@ export function Prospects() {
                           {contacto.NOMBRE || "Sin nombre"}
                           {contacto.APATERNO && ` ${contacto.APATERNO}`}
                           {contacto.AMATERNO && ` ${contacto.AMATERNO}`}
+                          {contacto.PUESTO && (
+                            <span className="ml-2 text-sm text-gray-500">({contacto.PUESTO})</span>
+                          )}
                         </p>
                       </div>
 
@@ -655,7 +643,6 @@ export function Prospects() {
         return null;
     }
   };
-  
 
   const LoadingSpinner = () => (
     <div className="flex justify-center items-center py-8">
@@ -667,7 +654,7 @@ export function Prospects() {
     </div>
   );
 
-  const EmptyState = ({ message = "No se encontraron clientes" }) => (
+  const EmptyState = ({ message = "No se encontraron prospectos" }) => (
     <div className="text-center py-12">
       <div className="mx-auto w-24 h-24 text-gray-400">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -680,26 +667,25 @@ export function Prospects() {
   );
 
   const formatCurrency = (value, currency = 'MXN') => {
-    if (typeof value !== 'number') return value || 'N/A';
-    
+    if (value === null || value === undefined || typeof value !== 'number') return 'N/A';
     const options = {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     };
-
     return new Intl.NumberFormat('es-MX', options).format(value);
   };
 
   const formatPercent = (value) => {
+    if (value === null || value === undefined || typeof value !== 'number') return 'N/A';
     return `${value.toFixed(2)}%`
   }
 
   const formatPhoneNumber = (phone) => {
     if (!phone) return 'No disponible';
     const cleaned = phone.replace(/\D/g, '');
-    return cleaned.length === 10 
+    return cleaned.length === 10
       ? cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
       : phone;
   };
@@ -708,8 +694,6 @@ export function Prospects() {
     const url = `https://www.google.com/maps?q=${latitud},${longitud}`;
     window.open(url, '_blank');
   };
-
-
 
   return (
     <div className="bg-gray-50 min-h-screen p-4">
@@ -737,11 +721,13 @@ export function Prospects() {
           rutas={rutas}
           onSave={handleCreateProspect}
           onCancel={() => setShowProspectForm(false)}
+          saving={savingProspect}
         />
       )}
 
       {editingProspect && (
         <CustomerForm
+          key={editingProspect.CLIENTEID}
           title={`Editar prospecto: ${editingProspect.NOMBRECLI}`}
           customerType="PROSPECTO"
           sucursales={sucursales}
@@ -750,30 +736,30 @@ export function Prospects() {
           submitLabel="Actualizar"
           onSave={handleUpdateProspect}
           onCancel={() => setEditingProspect(null)}
+          saving={savingProspect}
         />
       )}
-      
-      {/* Vista móvil - Mostrar lista o detalle según selección */}
+
+      {/* Vista móvil */}
       {isMobileView ? (
         selectedAccount ? (
-          // Vista de detalle en móvil
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-4 border-b flex justify-between items-center">
-              <button 
+              <button
                 onClick={() => setSelectedAccount(null)}
                 className="text-gray-600 hover:text-gray-800"
               >
                 <FiChevronDown size={24} className="transform rotate-90"/>
               </button>
               <h2 className="text-xl font-bold flex-1 text-center">{selectedAccount.CLIENTEID} - {selectedAccount.NOMBRECLI}</h2>
-              <div className="w-6"></div> {/* Espacio para alinear */}
+              <div className="w-6"></div>
             </div>
 
             <div className="flex border-b overflow-x-auto">
               {["Detalles","Análisis","Contactos","Oportunidades","Actividades"].map(tab => (
                 <button
                   key={tab}
-                  className={`px-3 py-3 font-medium text-sm whitespace-nowrap ${activeTab.startsWith(tab) ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+                  className={`px-3 py-3 font-medium text-sm whitespace-nowrap ${activeTab === tab || activeTab === (tab === "Análisis" ? "Análisis de Cliente" : tab) ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
                   onClick={() => { setActiveTab(tab === "Análisis" ? "Análisis de Cliente" : tab); loadTabData(selectedAccount, tab); }}
                 >
                   {tab}
@@ -786,7 +772,6 @@ export function Prospects() {
             </div>
           </div>
         ) : (
-          // Vista de lista en móvil
           <div className="bg-white rounded-lg shadow">
             <div className="p-3 border-b">
               <div className="flex items-center mb-3">
@@ -794,22 +779,22 @@ export function Prospects() {
                   <FiSearch className="absolute left-3 top-3 text-gray-400"/>
                   <input
                     className="pl-10 pr-4 py-2 w-full border rounded-lg"
-                    placeholder="Buscar clientes..."
-                    value={filters.searchTerm}
-                    onChange={e => setFilters({ ...filters, searchTerm: e.target.value })}
+                    placeholder="Buscar prospectos..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <button 
+                <button
                   className="ml-2 p-2 text-gray-500 hover:text-gray-700"
                   onClick={() => setShowFilters(!showFilters)}
                 >
                   <FiFilter/>
                 </button>
               </div>
-              
+
               {showFilters && (
                 <div className="grid grid-cols-1 gap-2 mt-2">
-                  <select 
+                  <select
                     className="border rounded p-2 text-sm"
                     value={filters.status}
                     onChange={e => handleFilterChange("status", e.target.value)}
@@ -818,7 +803,7 @@ export function Prospects() {
                     <option value="ACTIVO">ACTIVO</option>
                     <option value="INACTIVO">INACTIVO</option>
                   </select>
-                  <select 
+                  <select
                     className="border rounded p-2 text-sm"
                     value={filters.sucursal}
                     onChange={e => handleFilterChange("sucursal", e.target.value)}
@@ -830,7 +815,7 @@ export function Prospects() {
                       </option>
                     ))}
                   </select>
-                  <select 
+                  <select
                     className="border rounded p-2 text-sm"
                     value={filters.salesRep}
                     onChange={e => handleFilterChange("salesRep", e.target.value)}
@@ -845,21 +830,17 @@ export function Prospects() {
                 </div>
               )}
             </div>
-            
+
             <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 180px)" }}>
               {loading ? (
-                <div className="py-8">
-                  <LoadingSpinner />
-                </div>
+                <div className="py-8"><LoadingSpinner /></div>
               ) : error ? (
-                <div className="py-4 text-center text-red-500">
-                  {error}
-                </div>
-              ) : accounts2.length === 0 ? (
+                <div className="py-4 text-center text-red-500">{error}</div>
+              ) : prospects.length === 0 ? (
                 <EmptyState />
               ) : (
                 <div className="divide-y">
-                  {accounts2.map(acc => (
+                  {prospects.map(acc => (
                     <div
                       key={acc.CLIENTEID}
                       className="p-3 hover:bg-blue-50 cursor-pointer"
@@ -871,19 +852,18 @@ export function Prospects() {
                         <span className={`inline-flex px-2 py-0.5 text-xs rounded-full ${acc.ESTATUS === "ACTIVO" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
                           {acc.ESTATUS}
                         </span>
-                        <span className="text-gray-600">{acc.RUTA}</span>
+                        <span className="text-gray-600">{acc.RUTAID ? `${acc.RUTAID}-` : ''}{acc.RUTA || ''}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-            
-            {/* BOTONES PAGINACION */}
+
             <div className="flex justify-between items-center p-3 border-t">
               <button
                 className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
-                onClick={() => setPage(prev => Math.max(prev - 1, 1))}  
+                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
                 disabled={page === 1}
               >
                 Anterior
@@ -900,20 +880,19 @@ export function Prospects() {
           </div>
         )
       ) : (
-        // Vista de escritorio (igual que antes pero con algunos ajustes)
         <div className="flex flex-col lg:flex-row gap-4 flex-grow">
           {/* Lista */}
           <div className={`${selectedAccount ? "lg:w-1/3" : "w-full"} bg-white rounded-lg shadow`}>
             <div className="p-4 border-b">
-              <div className="flex items-center mb-4">
+              <div className="relative flex items-center mb-4">
                 <FiSearch className="absolute left-5 text-gray-400"/>
                 <input
                   className="pl-10 pr-4 py-2 w-full border rounded-lg"
-                  placeholder="Buscar clientes..."
-                  value={filters.searchTerm}
-                  onChange={e => setFilters({ ...filters, searchTerm: e.target.value })}
+                  placeholder="Buscar prospectos..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
                 />
-                <button 
+                <button
                   className="ml-2 p-2 text-gray-500 hover:text-gray-700"
                   onClick={() => setShowFilters(!showFilters)}
                 >
@@ -922,7 +901,7 @@ export function Prospects() {
               </div>
               {showFilters && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
-                  <select 
+                  <select
                     className="border rounded p-2 text-sm"
                     value={filters.status}
                     onChange={e => handleFilterChange("status", e.target.value)}
@@ -931,7 +910,7 @@ export function Prospects() {
                     <option value="ACTIVO">ACTIVO</option>
                     <option value="INACTIVO">INACTIVO</option>
                   </select>
-                  <select 
+                  <select
                     className="border rounded p-2 text-sm"
                     value={filters.sucursal}
                     onChange={e => handleFilterChange("sucursal", e.target.value)}
@@ -943,7 +922,7 @@ export function Prospects() {
                       </option>
                     ))}
                   </select>
-                  <select 
+                  <select
                     className="border rounded p-2 text-sm"
                     value={filters.salesRep}
                     onChange={e => handleFilterChange("salesRep", e.target.value)}
@@ -969,25 +948,13 @@ export function Prospects() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr>
-                      <td colSpan="3" className="py-8">
-                        <LoadingSpinner />
-                      </td>
-                    </tr>
+                    <tr><td colSpan="3" className="py-8"><LoadingSpinner /></td></tr>
                   ) : error ? (
-                    <tr>
-                      <td colSpan="3" className="py-4 text-center text-red-500">
-                        {error}
-                      </td>
-                    </tr>
-                  ) : accounts2.length === 0 ? (
-                    <tr>
-                      <td colSpan="3" className="py-4">
-                        <EmptyState />
-                      </td>
-                    </tr>
+                    <tr><td colSpan="3" className="py-4 text-center text-red-500">{error}</td></tr>
+                  ) : prospects.length === 0 ? (
+                    <tr><td colSpan="3" className="py-4"><EmptyState /></td></tr>
                   ) : (
-                    accounts2.map(acc => (
+                    prospects.map(acc => (
                       <tr
                         key={acc.CLIENTEID}
                         className={`border-t hover:bg-blue-50 cursor-pointer ${selectedAccount?.CLIENTEID === acc.CLIENTEID ? "bg-blue-50" : ""}`}
@@ -1002,18 +969,17 @@ export function Prospects() {
                             {acc.ESTATUS}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm">{acc.RUTA}</td>
+                        <td className="px-4 py-3 text-sm">{acc.RUTAID ? `${acc.RUTAID}-` : ''}{acc.RUTA || ''}</td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-            {/* BOTONES PAGINACION */}
             <div className="flex justify-between items-center p-4 border-t">
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
-                onClick={() => setPage(prev => Math.max(prev - 1, 1))}  
+                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
                 disabled={page === 1}
               >
                 Anterior

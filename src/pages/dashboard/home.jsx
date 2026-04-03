@@ -74,6 +74,76 @@ function activityVisual(status, activityType) {
   return { icon: ClockIcon, color: "text-blue-500" };
 }
 
+function SkeletonCard() {
+  return (
+    <Card className="p-4 border border-blue-gray-100 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+        <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse" />
+      </div>
+      <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-2" />
+      <div className="h-3 w-40 bg-gray-200 rounded animate-pulse" />
+    </Card>
+  );
+}
+
+function SkeletonChart() {
+  return (
+    <Card className="p-4 border border-blue-gray-100 shadow-sm">
+      <div className="h-4 w-36 bg-gray-200 rounded animate-pulse mb-2" />
+      <div className="h-3 w-48 bg-gray-200 rounded animate-pulse mb-4" />
+      <div className="h-[220px] bg-gray-100 rounded animate-pulse" />
+    </Card>
+  );
+}
+
+function SkeletonTable() {
+  return (
+    <Card className="overflow-hidden border border-blue-gray-100 shadow-sm">
+      <CardHeader floated={false} shadow={false} color="transparent" className="m-0 flex items-center justify-between p-6">
+        <div>
+          <div className="h-5 w-32 bg-gray-200 rounded animate-pulse mb-2" />
+          <div className="h-3 w-44 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
+      </CardHeader>
+      <CardBody className="px-0 pt-0 pb-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center gap-4 py-3 px-5 border-b border-blue-gray-50">
+            <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-3/4 bg-gray-200 rounded animate-pulse" />
+              <div className="h-3 w-1/2 bg-gray-200 rounded animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </CardBody>
+    </Card>
+  );
+}
+
+function SkeletonActivities() {
+  return (
+    <Card className="border border-blue-gray-100 shadow-sm">
+      <CardHeader floated={false} shadow={false} color="transparent" className="m-0 p-6">
+        <div className="h-5 w-40 bg-gray-200 rounded animate-pulse mb-2" />
+        <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+      </CardHeader>
+      <CardBody className="pt-0">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex items-start gap-4 py-3">
+            <div className="h-5 w-5 bg-gray-200 rounded animate-pulse flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-3/4 bg-gray-200 rounded animate-pulse" />
+              <div className="h-3 w-1/2 bg-gray-200 rounded animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </CardBody>
+    </Card>
+  );
+}
+
 export function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -295,41 +365,52 @@ export function Home() {
       )}
 
       <div className="mb-12 grid gap-y-10 gap-x-6 md:grid-cols-2 xl:grid-cols-4">
-        {(loading ? [] : statisticsCardsData).map(({ icon, title, footer, ...rest }) => (
-          <StatisticsCard
-            key={title}
-            {...rest}
-            title={title}
-            icon={React.createElement(icon, {
-              className: "w-6 h-6 text-white",
-            })}
-            footer={
-              <Typography className="font-normal text-blue-gray-600">
-                <strong className={footer.color}>{footer.value}</strong>
-                &nbsp;{footer.label}
-              </Typography>
-            }
-          />
-        ))}
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+          : statisticsCardsData.map(({ icon, title, footer, ...rest }) => (
+              <StatisticsCard
+                key={title}
+                {...rest}
+                title={title}
+                icon={React.createElement(icon, {
+                  className: "w-6 h-6 text-white",
+                })}
+                footer={
+                  <Typography className="font-normal text-blue-gray-600">
+                    <strong className={footer.color}>{footer.value}</strong>
+                    &nbsp;{footer.label}
+                  </Typography>
+                }
+              />
+            ))}
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-y-12 gap-x-6 md:grid-cols-2 xl:grid-cols-3">
-        {(loading ? [] : statisticsChartsData).map((props) => (
-          <StatisticsChart
-            key={props.title}
-            {...props}
-            footer={
-              <Typography variant="small" className="flex items-center font-normal text-blue-gray-600">
-                <ClockIcon strokeWidth={2} className="h-4 w-4 text-blue-gray-400" />
-                &nbsp;{props.footer}
-              </Typography>
-            }
-          />
-        ))}
+        {loading
+          ? Array.from({ length: 3 }).map((_, i) => <SkeletonChart key={i} />)
+          : statisticsChartsData.map((props) => (
+              <StatisticsChart
+                key={props.title}
+                {...props}
+                footer={
+                  <Typography variant="small" className="flex items-center font-normal text-blue-gray-600">
+                    <ClockIcon strokeWidth={2} className="h-4 w-4 text-blue-gray-400" />
+                    &nbsp;{props.footer}
+                  </Typography>
+                }
+              />
+            ))}
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <Card className="overflow-hidden xl:col-span-2 border border-blue-gray-100 shadow-sm">
+      <div className="mb-4 grid grid-cols-1 gap-6 xl:grid-cols-3 items-start">
+        {loading ? (
+          <>
+            <SkeletonTable />
+            <SkeletonActivities />
+          </>
+        ) : (
+          <>
+            <Card className="overflow-hidden xl:col-span-2 border border-blue-gray-100 shadow-sm">
           <CardHeader floated={false} shadow={false} color="transparent" className="m-0 flex items-center justify-between p-6">
             <div>
               <Typography variant="h6" color="blue-gray" className="mb-1">
@@ -472,7 +553,9 @@ export function Home() {
               </Typography>
             )}
           </CardBody>
-        </Card>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );

@@ -68,7 +68,7 @@ export const getRutas = async (DSC) => {
     }
 
     if (status) {
-      const msg = error.response.data?.message || "Error al obtener las sucursales";
+      const msg = error.response.data?.message || "Error al obtener las rutas";
       console.error("Error:", msg);
       throw new Error(msg);
     }
@@ -112,11 +112,11 @@ export const getClientes = async (CLIENTEID, NOMBRECLI, SUCURSAL, ESTATUS, RUTA,
 
     if (status === 401) {
       console.log("Token expirado. Renovando...");
-      return await refreshToken(getClientes, CLIENTEID, NOMBRECLI, SUCURSAL, ESTATUS, RUTA, PAGE);
+      return await refreshToken(getClientes, CLIENTEID, NOMBRECLI, SUCURSAL, ESTATUS, RUTA, PAGE, NUMCLI, TIPO);
     }
 
     if (status) {
-      const msg = error.response.data?.message || "Error al obtener las sucursales";
+      const msg = error.response.data?.message || "Error al obtener los clientes";
       console.error("Error:", msg);
       throw new Error(msg);
     }

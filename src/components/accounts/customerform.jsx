@@ -212,7 +212,9 @@ export const CustomerForm = ({
   submitLabel,
   onSave,
   onCancel,
+  saving = false,
 }) => {
+  const isEditing = !!initialData?.CLIENTEID;
   const [formData, setFormData] = useState({
     NOMBRECLI: initialData?.NOMBRECLI || "",
     GIRO: initialData?.GIRO || "",
@@ -224,11 +226,31 @@ export const CustomerForm = ({
     EMAIL: initialData?.EMAIL || "",
     TEL: initialData?.TEL || "",
     ESTATUS: initialData?.ESTATUS || "ACTIVO",
-    SUCURSAL: initialData?.SUCURSALID || initialData?.SUCURSAL || "",
-    RUTA: initialData?.RUTAID || initialData?.RUTA || "",
+    SUCURSAL: initialData?.SUCURSALID ?? "",
+    RUTA: initialData?.RUTAID ?? "",
     LAT: initialData?.LAT ?? "",
     LON: initialData?.LON ?? "",
   });
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    setFormData((prev) => {
+      const updates = {};
+
+      if (!prev.SUCURSAL && initialData?.SUCURSAL && sucursales.length > 0) {
+        const match = sucursales.find((s) => s.DSC === initialData.SUCURSAL);
+        if (match) updates.SUCURSAL = match.ID;
+      }
+
+      if (!prev.RUTA && initialData?.RUTA && rutas.length > 0) {
+        const match = rutas.find((r) => r.DSC === initialData.RUTA);
+        if (match) updates.RUTA = match.ID;
+      }
+
+      return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+    });
+  }, [isEditing, initialData, sucursales, rutas]);
 
   const availableRoutes = useMemo(() => {
     if (!formData.SUCURSAL) return rutas;
@@ -291,10 +313,12 @@ export const CustomerForm = ({
           addressFields={formData}
         />
 
-        <select name="ESTATUS" value={formData.ESTATUS} onChange={handleChange} className="border rounded p-2">
-          <option value="ACTIVO">ACTIVO</option>
-          <option value="INACTIVO">INACTIVO</option>
-        </select>
+        {isEditing && (
+          <select name="ESTATUS" value={formData.ESTATUS} onChange={handleChange} className="border rounded p-2">
+            <option value="ACTIVO">ACTIVO</option>
+            <option value="INACTIVO">INACTIVO</option>
+          </select>
+        )}
 
         <select
           name="SUCURSAL"
@@ -323,8 +347,8 @@ export const CustomerForm = ({
           <button type="button" className="px-4 py-2 border rounded text-gray-700" onClick={onCancel}>
             Cancelar
           </button>
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            {submitLabel || "Guardar"}
+          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50" disabled={saving}>
+            {saving ? "Guardando..." : (submitLabel || "Guardar")}
           </button>
         </div>
       </form>

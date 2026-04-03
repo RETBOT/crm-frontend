@@ -7,6 +7,7 @@ import 'leaflet.markercluster/dist/leaflet.markercluster.js';
 import L from 'leaflet';
 import { FiMapPin, FiSearch, FiNavigation, FiX, FiCheck, FiMinus, FiMap, FiTrash2, FiLoader } from 'react-icons/fi';
 import { getClientes, getRutas, getSucursales } from '../../api/accounts';
+import { getActividadesCheckins } from '../../api/activities';
 
 const STATUS_COLORS = {
   ACTIVO: '#22c55e',
@@ -38,6 +39,52 @@ function createNumberedIcon(number) {
     iconAnchor: [14, 14],
     className: ''
   });
+}
+
+function createCheckinIcon() {
+  return L.divIcon({
+    html: `<svg width="24" height="24" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="12" fill="#7c3aed"/>
+      <path d="M7 12l3 3 7-7" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    className: ''
+  });
+}
+
+function CheckinsLayer({ checkins }) {
+  const map = useMap();
+  const layersRef = useRef([]);
+
+  useEffect(() => {
+    layersRef.current.forEach((layer) => map.removeLayer(layer));
+    layersRef.current = [];
+
+    if (!checkins?.length) return;
+
+    checkins.forEach((ci) => {
+      const marker = L.marker([ci.CHECK_IN_LAT, ci.CHECK_IN_LON], { icon: createCheckinIcon(), zIndexOffset: 1500 })
+        .bindPopup(`
+          <div style="min-width:200px">
+            <strong>📌 ${ci.TYPE_NAME || ci.TYPE}</strong><br/>
+            <span style="font-size:13px">${ci.SUBJECT}</span><br/>
+            <span style="font-size:12px;color:#6b7280">Cliente: ${ci.NOMBRECLI}</span><br/>
+            <span style="font-size:12px;color:#6b7280">Usuario: ${ci.OWNER_NAME || 'N/A'}</span><br/>
+            <span style="font-size:12px;color:#6b7280">Fecha: ${ci.COMPLETED_AT ? new Date(ci.COMPLETED_AT).toLocaleString('es-MX') : 'N/A'}</span>
+          </div>
+        `)
+        .addTo(map);
+      layersRef.current.push(marker);
+    });
+
+    return () => {
+      layersRef.current.forEach((layer) => map.removeLayer(layer));
+      layersRef.current = [];
+    };
+  }, [checkins, map]);
+
+  return null;
 }
 
 const normalizeId = (value) => (value === undefined || value === null ? '' : String(value));
@@ -515,6 +562,10 @@ export function Maps() {
   const [selectedClients, setSelectedClients] = useState(new Set());
   const [routeResult, setRouteResult] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  const [checkins, setCheckins] = useState([]);
+  const [showCheckins, setShowCheckins] = useState(false);
+  const [checkinDateFrom, setCheckinDateFrom] = useState('');
+  const [checkinDateTo, setCheckinDateTo] = useState('');
   const [filters, setFilters] = useState({
     searchTerm: urlParams.search,
     status: urlParams.status,
@@ -612,6 +663,25 @@ export function Maps() {
 
     fetchRutas();
   }, [filters.sucursal]);
+
+  useEffect(() => {
+    if (!showCheckins) {
+      setCheckins([]);
+      return;
+    }
+    const fetchCheckins = async () => {
+      try {
+        const res = await getActividadesCheckins({
+          FROM_DATE: checkinDateFrom || null,
+          TO_DATE: checkinDateTo || null,
+        });
+        setCheckins(Array.isArray(res) ? res : (res.data || []));
+      } catch {
+        setCheckins([]);
+      }
+    };
+    fetchCheckins();
+  }, [showCheckins, checkinDateFrom, checkinDateTo]);
 
   useEffect(() => {
     if (!clienteSeleccionado) return;
@@ -799,6 +869,43 @@ export function Maps() {
             </div>
           )}
 
+          <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <label className="flex items-center gap-2 text-sm font-medium text-purple-800 mb-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showCheckins}
+                onChange={(e) => setShowCheckins(e.target.checked)}
+                className="rounded border-purple-300 text-purple-600"
+              />
+              Mostrar visitas/check-ins
+            </label>
+            {showCheckins && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-purple-600">Desde</label>
+                  <input
+                    type="date"
+                    value={checkinDateFrom}
+                    onChange={(e) => setCheckinDateFrom(e.target.value)}
+                    className="w-full border border-purple-200 rounded px-2 py-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-purple-600">Hasta</label>
+                  <input
+                    type="date"
+                    value={checkinDateTo}
+                    onChange={(e) => setCheckinDateTo(e.target.value)}
+                    className="w-full border border-purple-200 rounded px-2 py-1 text-xs"
+                  />
+                </div>
+              </div>
+            )}
+            {showCheckins && checkins.length > 0 && (
+              <p className="text-xs text-purple-600 mt-2">{checkins.length} check-in(s) encontrados</p>
+            )}
+          </div>
+
           {routeResult && (
             <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center justify-between mb-2">
@@ -960,6 +1067,7 @@ export function Maps() {
           <LocateControl onLocationFound={setUserLocation} />
           <UserLocationMarker location={userLocation} />
           <RouteLayer routeResult={routeResult} />
+          <CheckinsLayer checkins={checkins} />
 
           <MarkerClusterLayer
             clientesConCoordenadas={clientesConCoordenadas}

@@ -17,6 +17,7 @@ import {
   getTiposActividad,
 } from "../../api/activities";
 import { ActivityForm } from "./activityform";
+import { CheckinModal } from "../activities/checkin-modal";
 import { hasPermission } from "../../utils/auth";
 
 const statusStyles = {
@@ -67,13 +68,14 @@ function daysOverdue(dueAt) {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-export const ActivityList = ({ clienteId, contacts = [] }) => {
+export const ActivityList = ({ clienteId, contacts = [], customerData = {} }) => {
   const [actividades, setActividades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [activityTypes, setActivityTypes] = useState([]);
   const [assignees, setAssignees] = useState([]);
+  const [checkinActivity, setCheckinActivity] = useState(null);
   const canAssign = hasPermission("activities.assign");
 
   const fetchActividades = async () => {
@@ -136,6 +138,16 @@ export const ActivityList = ({ clienteId, contacts = [] }) => {
       fetchActividades();
     } catch (err) {
       alert(err?.message || "Error al actualizar");
+    }
+  };
+
+  const handleCompleteWithCheckin = async (activityId, lat, lon) => {
+    try {
+      await completarActividad(activityId, "Completada", lat, lon);
+      setCheckinActivity(null);
+      fetchActividades();
+    } catch (err) {
+      alert(err?.message || "Error al completar actividad");
     }
   };
 
@@ -233,17 +245,36 @@ export const ActivityList = ({ clienteId, contacts = [] }) => {
                   <FiXCircle className="inline mr-1" />
                   Cancelar
                 </button>
-                <button
-                  className="text-blue-600 text-sm hover:text-blue-800"
-                  onClick={() => handleComplete(act.ACTIVITYID, "Completada")}
-                >
-                  <FiCheckCircle className="inline mr-1" />
-                  Completar
-                </button>
+                {(act.TYPE === "Visita" || act.TYPE === "Reunion") ? (
+                  <button
+                    className="text-blue-600 text-sm hover:text-blue-800"
+                    onClick={() => setCheckinActivity(act)}
+                  >
+                    <FiCheckCircle className="inline mr-1" />
+                    Completar con check-in
+                  </button>
+                ) : (
+                  <button
+                    className="text-blue-600 text-sm hover:text-blue-800"
+                    onClick={() => handleComplete(act.ACTIVITYID, "Completada")}
+                  >
+                    <FiCheckCircle className="inline mr-1" />
+                    Completar
+                  </button>
+                )}
               </div>
             ) : null}
           </div>
         ))
+      )}
+
+      {checkinActivity && (
+        <CheckinModal
+          activity={checkinActivity}
+          customer={customerData}
+          onClose={() => setCheckinActivity(null)}
+          onConfirm={(lat, lon) => handleCompleteWithCheckin(checkinActivity.ACTIVITYID, lat, lon)}
+        />
       )}
     </div>
   );

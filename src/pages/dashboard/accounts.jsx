@@ -616,7 +616,7 @@ export function Accounts() {
           </div>
         );
       case "Actividades":
-        return <ActivityList clienteId={acc.customer_id || acc.CLIENTEID} contacts={acc.Contactos || []} />;
+        return <ActivityList clienteId={acc.customer_id || acc.CLIENTEID} contacts={acc.Contactos || []} customerData={acc} />;
       default:
         return null;
     }

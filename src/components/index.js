@@ -4,3 +4,4 @@ export * from "./accounts/activityform";
 export * from "./accounts/activitylist";
 export * from "./opportunities/opportunityform";
 export * from "./notifications/notification";
+export * from "./activities/checkin-modal";

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiPlus, FiTrash2 } from "react-icons/fi";
 import { hasPermission } from "../../utils/auth";
 import { PERMISSIONS } from "../../utils/permissions";
@@ -6,6 +6,7 @@ import { PERMISSIONS } from "../../utils/permissions";
 export const OpportunityForm = ({
   title,
   initialData,
+  initialItems = [],
   customerId,
   customerList = [],
   contactList = [],
@@ -17,6 +18,10 @@ export const OpportunityForm = ({
 }) => {
   const canEditPrice = hasPermission(PERMISSIONS.OPPORTUNITIES_PRICE_EDIT);
   const needsCustomerSelector = customerList.length > 0 && !customerId;
+  const today = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
 
   const [formData, setFormData] = useState({
     TITLE: initialData?.TITLE || "",
@@ -32,16 +37,40 @@ export const OpportunityForm = ({
   });
 
   const [items, setItems] = useState(
-    initialData?.ITEMS?.map((item) => ({
-      PRODUCT_ID: item.PRODUCT_ID || "",
-      ITEM_DESCRIPTION: item.ITEM_DESCRIPTION || "",
-      QUANTITY: item.QUANTITY || 1,
-      UNIT_PRICE: item.UNIT_PRICE || 0,
-    })) || []
+    initialItems.length > 0
+      ? initialItems.map((item) => ({
+          PRODUCT_ID: item.PRODUCT_ID || item.product_id || "",
+          ITEM_DESCRIPTION: item.ITEM_DESCRIPTION || item.item_description || "",
+          QUANTITY: item.QUANTITY || item.quantity || 1,
+          UNIT_PRICE: item.UNIT_PRICE || item.unit_price || 0,
+        }))
+      : initialData?.ITEMS?.map((item) => ({
+          PRODUCT_ID: item.PRODUCT_ID || "",
+          ITEM_DESCRIPTION: item.ITEM_DESCRIPTION || "",
+          QUANTITY: item.QUANTITY || 1,
+          UNIT_PRICE: item.UNIT_PRICE || 0,
+        })) || [{ PRODUCT_ID: "", ITEM_DESCRIPTION: "", QUANTITY: 1, UNIT_PRICE: 0 }]
   );
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Filter contacts by selected customer
+  const filteredContacts = contactList.filter(
+    (c) => String(c.customer_id || c.CLIENTEID) === String(formData.CUSTOMER_ID)
+  );
+
+  // Reset contact when customer changes
+  useEffect(() => {
+    if (formData.CONTACT_ID && filteredContacts.length > 0) {
+      const contactExists = filteredContacts.some(
+        (c) => String(c.ID) === String(formData.CONTACT_ID)
+      );
+      if (!contactExists) {
+        setFormData((prev) => ({ ...prev, CONTACT_ID: "" }));
+      }
+    }
+  }, [formData.CUSTOMER_ID, filteredContacts, formData.CONTACT_ID]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -160,22 +189,22 @@ export const OpportunityForm = ({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Monto estimado ($)</label>
-            <input name="AMOUNT" type="number" step="0.01" value={formData.AMOUNT} onChange={handleChange} className="border rounded p-2 w-full" placeholder="Ej: 25000" />
+            <input name="AMOUNT" type="number" step="0.01" min="0" value={formData.AMOUNT} onChange={handleChange} className="border rounded p-2 w-full" placeholder="Ej: 25000" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de cierre estimada</label>
-            <input name="CLOSE_DATE" type="date" value={formData.CLOSE_DATE} onChange={handleChange} className="border rounded p-2 w-full" />
+            <input name="CLOSE_DATE" type="date" min={today} value={formData.CLOSE_DATE} onChange={handleChange} className="border rounded p-2 w-full" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Probabilidad (%)</label>
             <input name="PROBABILITY" type="number" min="0" max="100" value={formData.PROBABILITY} onChange={handleChange} className="border rounded p-2 w-full" placeholder="Ej: 50" />
           </div>
-          {contactList.length > 0 && (
+          {filteredContacts.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Contacto</label>
               <select name="CONTACT_ID" value={formData.CONTACT_ID} onChange={handleChange} className="border rounded p-2 w-full">
                 <option value="">Sin contacto</option>
-                {contactList.map((c) => (
+                {filteredContacts.map((c) => (
                   <option key={c.ID} value={c.ID}>{c.NOMBRE} {c.APATERNO}</option>
                 ))}
               </select>

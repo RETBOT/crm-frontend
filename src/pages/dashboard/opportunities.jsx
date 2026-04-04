@@ -192,6 +192,7 @@ export function Opportunities() {
   const handleUpdate = async (payload) => {
     await updateOpportunity(payload);
     setEditingOpp(null);
+    setShowForm(false);
     showNotification("Oportunidad actualizada correctamente");
     loadData();
   };
@@ -385,6 +386,7 @@ export function Opportunities() {
           <OpportunityForm
             title={editingOpp ? "Editar Oportunidad" : "Nueva Oportunidad"}
             initialData={editingOpp}
+            initialItems={editingOpp ? oppItems : []}
             customerList={customers}
             contactList={contacts}
             products={products}

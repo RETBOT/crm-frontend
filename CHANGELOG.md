@@ -46,12 +46,20 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Bug en actividades: fechas del filtro incluían día anterior por diferencia UTC/local
 - Bug en actividades: `getActivityUsersHandler` backend usaba `_req` pero referenciaba `req`
 - Bug en accounts.jsx: link de WhatsApp no limpiaba caracteres no numéricos
+- Bug en oportunidades: `updateOpportunity` no cargaba items existentes al editar
+- Bug en oportunidades: monto permitía valores negativos
+- Bug en oportunidades: fecha permitía fechas pasadas
+- Bug en oportunidades: contactos mostraba todos los clientes en vez de solo los del cliente seleccionado
+- Bug en oportunidades: `handleUpdate` no cerraba el formulario tras actualizar
+- Bug en oportunidades: fecha mínima usaba UTC en vez de hora local → bloqueaba día actual
+- Bug en oportunidades: `stage_id` NULL en UPDATE porque SELECT no lo incluía
 - Mejoras en actividades: filtros avanzados (tipo, cliente, prioridad, responsable, rango de fechas)
 - Mejoras en actividades: ordenamiento por columnas (fecha, prioridad, estado)
 - Mejoras en actividades: panel de detalle como drawer lateral
 - Mejoras en actividades: paginación configurable (10, 20, 50, 100)
 - Mejoras en actividades: sticky header de tabla
 - Mejoras en actividades: fix conflicto visual vencida/seleccionada
+- Mejoras en oportunidades: eliminar con confirmación, filtros, ordenamiento, paginación
 
 ---
 

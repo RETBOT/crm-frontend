@@ -277,6 +277,7 @@ export function Reports() {
   };
 
   const handleEditSchedule = (schedule) => {
+    setShowScheduleList(false);
     setEditingSchedule(schedule);
     const recips = Array.isArray(schedule.recipients) ? schedule.recipients.join(", ") : (schedule.recipients || "");
     setScheduleForm({

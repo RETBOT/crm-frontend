@@ -2,12 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   FiSearch, FiUser, FiPhone, FiMail, FiFileText, FiCalendar,
   FiDollarSign, FiTrendingUp, FiCheckCircle, FiCheck, FiX, FiXCircle, FiPlus,
+  FiChevronsLeft, FiChevronLeft, FiChevronRight, FiChevronsRight, FiFilter, FiTrash2,
+  FiArrowUp, FiArrowDown, FiMinus,
 } from "react-icons/fi";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import {
   getOpportunities, getOpportunityItems, getPipelines,
   createOpportunity, updateOpportunity, advanceStage,
-  setOpportunityStatus, reopenOpportunity,
+  setOpportunityStatus, reopenOpportunity, deleteOpportunity,
 } from "../../api/opportunities";
 import { getClientes, getContactos } from "../../api/accounts";
 import { getProducts } from "../../api/products";
@@ -19,6 +21,8 @@ const statusStyles = {
   ganada: "bg-green-100 text-green-800",
   perdida: "bg-red-100 text-red-800",
 };
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 export function Opportunities() {
   const [opportunities, setOpportunities] = useState([]);
@@ -37,14 +41,29 @@ export function Opportunities() {
   const [contacts, setContacts] = useState([]);
   const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
   const [opLoading, setOpLoading] = useState(false);
-  const [lostReasonModal, setLostReasonModal] = useState(false);
-  const [lostReason, setLostReason] = useState("");
   const [confirmModal, setConfirmModal] = useState(null);
+  const [lostReason, setLostReason] = useState("");
+
+  // Phase 4: Filters & Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  const [totalRegs, setTotalRegs] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterCustomer, setFilterCustomer] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterOwner, setFilterOwner] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [sortBy, setSortBy] = useState("stage_order");
+  const [sortDir, setSortDir] = useState("ASC");
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedSearch(searchTerm), 400);
     return () => window.clearTimeout(id);
   }, [searchTerm]);
+
+  useEffect(() => { setPage(1); }, [debouncedSearch, filterCustomer, filterStatus, filterOwner, filterDateFrom, filterDateTo, pageSize]);
 
   const showNotification = (msg, type = "success") => {
     setNotification({ show: true, message: msg, type });
@@ -55,12 +74,25 @@ export function Opportunities() {
     setError("");
     try {
       const [oppRes, pipeRes, custRes, prodRes] = await Promise.all([
-        getOpportunities({ SEARCH: debouncedSearch, TPAG: 100 }),
+        getOpportunities({
+          SEARCH: debouncedSearch,
+          CUSTOMER_ID: filterCustomer || null,
+          STATUS: filterStatus || null,
+          OWNER_USER_ID: filterOwner || null,
+          CLOSE_DATE_FROM: filterDateFrom || null,
+          CLOSE_DATE_TO: filterDateTo || null,
+          NPAG: page,
+          TPAG: pageSize,
+          SORT_BY: sortBy,
+          SORT_DIR: sortDir,
+        }),
         getPipelines(),
         getClientes(0, "", "", "ACTIVO", "", 1, 0, ""),
         getProducts(),
       ]);
       setOpportunities(oppRes.data || []);
+      setTotalPaginas(oppRes.tot_pags || 1);
+      setTotalRegs(oppRes.total_regs || 0);
       setPipelines(Array.isArray(pipeRes) ? pipeRes : []);
       const custData = custRes.data || custRes;
       setCustomers(Array.isArray(custData) ? custData : []);
@@ -72,7 +104,7 @@ export function Opportunities() {
     }
   };
 
-  useEffect(() => { loadData(); }, [debouncedSearch]);
+  useEffect(() => { loadData(); }, [debouncedSearch, page, pageSize, filterCustomer, filterStatus, filterOwner, filterDateFrom, filterDateTo, sortBy, sortDir]);
 
   const loadItems = async (oppId) => {
     try {
@@ -164,6 +196,18 @@ export function Opportunities() {
     loadData();
   };
 
+  const handleDelete = async () => {
+    if (!selectedOpp) return;
+    setOpLoading(true);
+    try {
+      await deleteOpportunity(selectedOpp.OPPORTUNITYID);
+      showNotification("Oportunidad eliminada");
+      loadData();
+      setSelectedOpp(null);
+    } catch (err) { showNotification(err?.message, "error"); }
+    finally { setOpLoading(false); setConfirmModal(null); }
+  };
+
   const handleAdvanceStage = async () => {
     if (!selectedOpp) return;
     setOpLoading(true);
@@ -190,7 +234,7 @@ export function Opportunities() {
       loadData();
       setSelectedOpp(null);
     } catch (err) { showNotification(err?.message, "error"); }
-    finally { setOpLoading(false); }
+    finally { setOpLoading(false); setConfirmModal(null); }
   };
 
   const handleSetStatusWithReason = (status) => {
@@ -202,15 +246,14 @@ export function Opportunities() {
     }
   };
 
-  const confirmStatus = async () => {
+  const confirmAction = async () => {
     if (confirmModal?.type === "lost") {
-      setLostReasonModal(false);
       await handleSetStatus("perdida", lostReason);
     } else if (confirmModal?.type === "won") {
-      setConfirmModal(null);
       await handleSetStatus("ganada");
+    } else if (confirmModal?.type === "delete") {
+      await handleDelete();
     }
-    setConfirmModal(null);
   };
 
   const handleReopen = async () => {
@@ -225,26 +268,18 @@ export function Opportunities() {
     finally { setOpLoading(false); }
   };
 
-  const handleSetStatus = async (status) => {
-    if (!selectedOpp) return;
-    const reason = status === "perdida" ? window.prompt("Razon de la perdida:") : "";
-    if (status === "perdida" && reason === null) return;
-    try {
-      await setOpportunityStatus(selectedOpp.OPPORTUNITYID, status, reason || "");
-      showNotification(status === "ganada" ? "Oportunidad ganada!" : "Oportunidad marcada como perdida");
-      loadData();
-      setSelectedOpp(null);
-    } catch (err) { showNotification(err?.message, "error"); }
+  const handleSort = (column) => {
+    if (sortBy === column) {
+      setSortDir(prev => prev === "ASC" ? "DESC" : "ASC");
+    } else {
+      setSortBy(column);
+      setSortDir("ASC");
+    }
   };
 
-  const handleReopen = async () => {
-    if (!selectedOpp) return;
-    try {
-      await reopenOpportunity(selectedOpp.OPPORTURITYID || selectedOpp.OPPORTUNITYID);
-      showNotification("Oportunidad reabierta");
-      loadData();
-      setSelectedOpp(null);
-    } catch (err) { showNotification(err?.message, "error"); }
+  const SortIcon = ({ column }) => {
+    if (sortBy !== column) return <FiMinus className="ml-1 text-gray-300" size={12} />;
+    return sortDir === "ASC" ? <FiArrowUp className="ml-1 text-blue-600" size={12} /> : <FiArrowDown className="ml-1 text-blue-600" size={12} />;
   };
 
   const formatAmount = (amount) => {
@@ -258,6 +293,21 @@ export function Opportunities() {
     catch { return dateStr; }
   };
 
+  const clearFilters = () => {
+    setFilterCustomer("");
+    setFilterStatus("");
+    setFilterOwner("");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+    setSortBy("stage_order");
+    setSortDir("ASC");
+  };
+
+  const hasActiveFilters = filterCustomer || filterStatus || filterOwner || filterDateFrom || filterDateTo || sortBy !== "stage_order";
+
+  const startRow = totalRegs > 0 ? (page - 1) * pageSize + 1 : 0;
+  const endRow = Math.min(page * pageSize, totalRegs);
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
@@ -267,20 +317,67 @@ export function Opportunities() {
             <p className="text-gray-600">Seguimiento de oportunidades comerciales</p>
           </div>
           <div className="flex space-x-3">
-            <button className={`px-4 py-2 rounded-lg ${viewMode === "list" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setViewMode("list")}>Lista</button>
-            <button className={`px-4 py-2 rounded-lg ${viewMode === "kanban" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setViewMode("kanban")}>Kanban</button>
-            {hasPermission("customers.create") && (
-              <button className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700" onClick={() => { setShowForm(true); setEditingOpp(null); setSelectedOpp(null); }}>
+            <button className={`px-4 py-2 rounded-lg text-sm ${viewMode === "list" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setViewMode("list")}>Lista</button>
+            <button className={`px-4 py-2 rounded-lg text-sm ${viewMode === "kanban" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setViewMode("kanban")}>Kanban</button>
+            {hasPermission("opportunities.create") && (
+              <button className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm" onClick={() => { setShowForm(true); setEditingOpp(null); setSelectedOpp(null); }}>
                 <FiPlus className="mr-1" /> Nueva Oportunidad
               </button>
             )}
           </div>
         </div>
 
-        <div className="mb-6 relative max-w-md">
-          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input type="text" placeholder="Buscar por titulo o cliente..." className="pl-10 pr-4 py-2 w-full border rounded-lg" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <div className="mb-6 flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1 max-w-md">
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input type="text" placeholder="Buscar por titulo o cliente..." className="pl-10 pr-4 py-2 w-full border rounded-lg" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-1 px-3 py-2 border rounded-lg text-sm transition-colors ${showFilters ? 'bg-blue-50 border-blue-300 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            <FiFilter size={14} /> Filtros
+            {hasActiveFilters && <span className="w-2 h-2 bg-blue-600 rounded-full" />}
+          </button>
         </div>
+
+        {showFilters && (
+          <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Cliente</label>
+                <select className="w-full border rounded-lg px-3 py-2 text-sm" value={filterCustomer} onChange={(e) => setFilterCustomer(e.target.value)}>
+                  <option value="">Todos</option>
+                  {customers.map((c) => (
+                    <option key={c.customer_id || c.CLIENTEID} value={c.customer_id || c.CLIENTEID}>{c.customer_name || c.NOMBRECLI}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Estatus</label>
+                <select className="w-full border rounded-lg px-3 py-2 text-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                  <option value="">Todos</option>
+                  <option value="abierta">Abierta</option>
+                  <option value="ganada">Ganada</option>
+                  <option value="perdida">Perdida</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Fecha desde</label>
+                <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Fecha hasta</label>
+                <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+              </div>
+            </div>
+            {hasActiveFilters && (
+              <button onClick={clearFilters} className="mt-3 text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                <FiX size={12} /> Limpiar filtros
+              </button>
+            )}
+          </div>
+        )}
 
         {notification.show && <Notification message={notification.message} type={notification.type} onClose={() => setNotification({ ...notification, show: false })} />}
 
@@ -304,83 +401,105 @@ export function Opportunities() {
           <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>
         ) : viewMode === "list" ? (
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-100 text-left">
-                <tr>
-                  <th className="px-4 py-3">Oportunidad</th>
-                  <th className="px-4 py-3">Cliente</th>
-                  <th className="px-4 py-3">Etapa</th>
-                  <th className="px-4 py-3">Valor</th>
-                  <th className="px-4 py-3">Cierre</th>
-                  <th className="px-4 py-3">Probabilidad</th>
-                </tr>
-              </thead>
-              <tbody>
-                {opportunities.map((opp) => (
-                  <tr key={opp.OPPORTUNITYID} className="border-t hover:bg-blue-50 cursor-pointer" onClick={() => selectOpp(opp)}>
-                    <td className="px-4 py-3 font-medium">{opp.TITLE}</td>
-                    <td className="px-4 py-3"><div className="font-medium">{opp.NOMBRECLI}</div><div className="text-sm text-gray-500">{opp.CONTACT_NAME}</div></td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[opp.STATUS] || (stageMap[opp.STAGE_ID]?.color || "bg-gray-100")}`}>
-                        {opp.STATUS === "abierta"
-                          ? (stageMap[opp.STAGE_ID]?.NAME || opp.STAGE_NAME || "Abierta")
-                          : opp.STATUS === "ganada" ? "Ganada" : "Perdida"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-medium">{formatAmount(opp.AMOUNT)}</td>
-                    <td className="px-4 py-3">{formatDate(opp.CLOSE_DATE)}</td>
-                    <td className="px-4 py-3">
-                      <div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${opp.PROBABILITY || 0}%` }}></div></div>
-                      <span className="text-sm text-gray-500">{opp.PROBABILITY || 0}%</span>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-100 text-left">
+                  <tr>
+                    <th className="px-4 py-3">Oportunidad</th>
+                    <th className="px-4 py-3">Cliente</th>
+                    <th className="px-4 py-3">Etapa</th>
+                    <th className="px-4 py-3 cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort("amount")}>
+                      <span className="flex items-center">Valor <SortIcon column="amount" /></span>
+                    </th>
+                    <th className="px-4 py-3 cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort("close_date")}>
+                      <span className="flex items-center">Cierre <SortIcon column="close_date" /></span>
+                    </th>
+                    <th className="px-4 py-3 cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort("probability")}>
+                      <span className="flex items-center">Prob. <SortIcon column="probability" /></span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {opportunities.map((opp) => (
+                    <tr key={opp.OPPORTUNITYID} className="border-t hover:bg-blue-50 cursor-pointer" onClick={() => selectOpp(opp)}>
+                      <td className="px-4 py-3 font-medium">{opp.TITLE}</td>
+                      <td className="px-4 py-3"><div className="font-medium">{opp.NOMBRECLI}</div><div className="text-sm text-gray-500">{opp.CONTACT_NAME}</div></td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[opp.STATUS] || (stageMap[opp.STAGE_ID]?.color || "bg-gray-100")}`}>
+                          {opp.STATUS === "abierta" ? (stageMap[opp.STAGE_ID]?.NAME || opp.STAGE_NAME || "Abierta") : opp.STATUS === "ganada" ? "Ganada" : "Perdida"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-medium">{formatAmount(opp.AMOUNT)}</td>
+                      <td className="px-4 py-3">{formatDate(opp.CLOSE_DATE)}</td>
+                      <td className="px-4 py-3">
+                        <div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${opp.PROBABILITY || 0}%` }}></div></div>
+                        <span className="text-sm text-gray-500">{opp.PROBABILITY || 0}%</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalRegs > 0 && (
+              <div className="flex flex-col sm:flex-row justify-between items-center p-3 border-t gap-3">
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <span>Mostrando {startRow}-{endRow} de {totalRegs}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-500">Filas:</span>
+                    <select className="border rounded px-2 py-1 text-sm" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
+                      {PAGE_SIZE_OPTIONS.map((size) => (<option key={size} value={size}>{size}</option>))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30" onClick={() => setPage(1)} disabled={page === 1}><FiChevronsLeft size={16} /></button>
+                  <button className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30" onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={page === 1}><FiChevronLeft size={16} /></button>
+                  <span className="px-3 text-sm text-gray-600">Pag. {page} / {totalPaginas}</span>
+                  <button className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30" onClick={() => setPage(p => p + 1)} disabled={page >= totalPaginas}><FiChevronRight size={16} /></button>
+                  <button className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30" onClick={() => setPage(totalPaginas)} disabled={page >= totalPaginas}><FiChevronsRight size={16} /></button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div>
-            <div className="text-xs text-gray-400 mb-2 text-center">
-              Arrastra las tarjetas entre etapas para cambiar su estado
-            </div>
+            <div className="text-xs text-gray-400 mb-2 text-center">Arrastra las tarjetas entre etapas para cambiar su estado</div>
             <DragDropContext onDragEnd={onDragEnd}>
-              <div
-                className="grid gap-4 mb-6"
-                style={{ gridTemplateColumns: `repeat(${Math.max(openStageIds.length, 2)}, minmax(0, 1fr))` }}
-              >
+              <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: `repeat(${Math.max(openStageIds.length, 2)}, minmax(0, 1fr))` }}>
                 {openStageIds.map((stageId) => {
-                const stage = stageMap[stageId];
-                return (
-                  <Droppable key={stageId} droppableId={String(stageId)}>
-                    {(provided) => (
-                      <div ref={provided.innerRef} {...provided.droppableProps} className="bg-gray-100 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-3">
-                          <h3 className="font-medium text-sm">{stage.name}</h3>
-                          <span className="bg-white px-2 py-1 rounded-full text-xs">{opportunitiesByStage[stageId]?.length || 0}</span>
-                        </div>
-                        <div className="space-y-3 min-h-[100px]">
-                          {(opportunitiesByStage[stageId] || []).map((opp, index) => (
-                            <Draggable key={opp.OPPORTUNITYID} draggableId={String(opp.OPPORTUNITYID)} index={index}>
-                              {(provided) => (
-                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                                  className="bg-white p-3 rounded-lg shadow-sm hover:shadow-md cursor-pointer" onClick={() => selectOpp(opp)}>
-                                  <div className="font-medium text-sm mb-1">{opp.TITLE}</div>
-                                  <div className="text-xs text-gray-500 mb-1">{opp.NOMBRECLI}</div>
-                                  <div className="flex justify-between items-center">
-                                    <span className="font-bold text-blue-600 text-sm">{formatAmount(opp.AMOUNT)}</span>
-                                    <span className="text-xs text-gray-500">{formatDate(opp.CLOSE_DATE)}</span>
+                  const stage = stageMap[stageId];
+                  return (
+                    <Droppable key={stageId} droppableId={String(stageId)}>
+                      {(provided) => (
+                        <div ref={provided.innerRef} {...provided.droppableProps} className="bg-gray-100 rounded-lg p-4">
+                          <div className="flex justify-between items-center mb-3">
+                            <h3 className="font-medium text-sm">{stage.name}</h3>
+                            <span className="bg-white px-2 py-1 rounded-full text-xs">{opportunitiesByStage[stageId]?.length || 0}</span>
+                          </div>
+                          <div className="space-y-3 min-h-[100px]">
+                            {(opportunitiesByStage[stageId] || []).map((opp, index) => (
+                              <Draggable key={opp.OPPORTUNITYID} draggableId={String(opp.OPPORTUNITYID)} index={index}>
+                                {(provided) => (
+                                  <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
+                                    className="bg-white p-3 rounded-lg shadow-sm hover:shadow-md cursor-pointer" onClick={() => selectOpp(opp)}>
+                                    <div className="font-medium text-sm mb-1">{opp.TITLE}</div>
+                                    <div className="text-xs text-gray-500 mb-1">{opp.NOMBRECLI}</div>
+                                    <div className="flex justify-between items-center">
+                                      <span className="font-bold text-blue-600 text-sm">{formatAmount(opp.AMOUNT)}</span>
+                                      <span className="text-xs text-gray-500">{formatDate(opp.CLOSE_DATE)}</span>
+                                    </div>
+                                    <div className="mt-1 text-xs text-gray-400">{opp.PROBABILITY || 0}% prob.</div>
                                   </div>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
+                                )}
+                              </Draggable>
+                            ))}
+                          </div>
+                          {provided.placeholder}
                         </div>
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                );
-              })}
+                      )}
+                    </Droppable>
+                  );
+                })}
               </div>
             </DragDropContext>
           </div>
@@ -403,15 +522,14 @@ export function Opportunities() {
                       <label className="block text-sm font-medium text-gray-500">Etapa</label>
                       <p className="mt-1">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusStyles[selectedOpp.STATUS] || (stageMap[selectedOpp.STAGE_ID]?.color || "bg-gray-100")}`}>
-                          {selectedOpp.STATUS === "abierta"
-                            ? (stageMap[selectedOpp.STAGE_ID]?.NAME || selectedOpp.STAGE_NAME || "Abierta")
-                            : selectedOpp.STATUS === "ganada" ? "Ganada" : "Perdida"}
+                          {selectedOpp.STATUS === "abierta" ? (stageMap[selectedOpp.STAGE_ID]?.NAME || selectedOpp.STAGE_NAME || "Abierta") : selectedOpp.STATUS === "ganada" ? "Ganada" : "Perdida"}
                         </span>
                       </p>
                     </div>
                     <div><label className="block text-sm font-medium text-gray-500">Valor Estimado</label><p className="mt-1 font-medium text-xl">{formatAmount(selectedOpp.AMOUNT)}</p></div>
                     <div><label className="block text-sm font-medium text-gray-500">Fecha de Cierre</label><p className="mt-1 font-medium">{formatDate(selectedOpp.CLOSE_DATE)}</p></div>
                     <div><label className="block text-sm font-medium text-gray-500">Ingreso Esperado</label><p className="mt-1 font-medium text-xl text-green-600">{formatAmount((selectedOpp.AMOUNT || 0) * (selectedOpp.PROBABILITY || 0) / 100)}</p></div>
+                    <div><label className="block text-sm font-medium text-gray-500">Responsable</label><p className="mt-1 font-medium">{selectedOpp.OWNER_NAME || "Sin asignar"}</p></div>
                   </div>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
@@ -452,14 +570,28 @@ export function Opportunities() {
               <div className="flex justify-end space-x-3">
                 {selectedOpp.STATUS === "abierta" && (
                   <>
-                    <button className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50" disabled={opLoading} onClick={() => { setEditingOpp(selectedOpp); setShowForm(true); setSelectedOpp(null); loadContacts(selectedOpp.CUSTOMER_ID); }}>Editar</button>
+                    {hasPermission("opportunities.update") && (
+                      <button className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50" disabled={opLoading} onClick={() => { setEditingOpp(selectedOpp); setShowForm(true); setSelectedOpp(null); loadContacts(selectedOpp.CUSTOMER_ID); }}>Editar</button>
+                    )}
                     <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={opLoading} onClick={handleAdvanceStage}>Avanzar Etapa</button>
                     <button className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50" disabled={opLoading} onClick={() => handleSetStatusWithReason("perdida")}>Marcar Perdida</button>
                     <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50" disabled={opLoading} onClick={() => handleSetStatusWithReason("ganada")}>Marcar Ganada</button>
+                    {hasPermission("opportunities.delete") && (
+                      <button className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50" disabled={opLoading} onClick={() => setConfirmModal({ type: "delete" })}>
+                        <FiTrash2 className="inline mr-1" size={14} /> Eliminar
+                      </button>
+                    )}
                   </>
                 )}
                 {selectedOpp.STATUS !== "abierta" && (
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={opLoading} onClick={handleReopen}>Reabrir</button>
+                  <>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={opLoading} onClick={handleReopen}>Reabrir</button>
+                    {hasPermission("opportunities.delete") && (
+                      <button className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50" disabled={opLoading} onClick={() => setConfirmModal({ type: "delete" })}>
+                        <FiTrash2 className="inline mr-1" size={14} /> Eliminar
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -471,33 +603,22 @@ export function Opportunities() {
           <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
               <h3 className="text-lg font-bold mb-2">
-                {confirmModal.type === "lost" ? "Marcar como Perdida" : "Marcar como Ganada"}
+                {confirmModal.type === "lost" ? "Marcar como Perdida" : confirmModal.type === "delete" ? "Eliminar Oportunidad" : "Marcar como Ganada"}
               </h3>
               {confirmModal.type === "lost" && (
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Razon de la perdida</label>
-                  <textarea
-                    value={lostReason}
-                    onChange={(e) => setLostReason(e.target.value)}
-                    placeholder="Describe brevemente la razon..."
-                    rows={3}
-                    className="w-full border rounded-lg p-2 text-sm resize-none"
-                  />
+                  <textarea value={lostReason} onChange={(e) => setLostReason(e.target.value)} placeholder="Describe brevemente la razon..." rows={3} className="w-full border rounded-lg p-2 text-sm resize-none" />
                 </div>
               )}
+              {confirmModal.type === "delete" && (
+                <p className="text-sm text-gray-600 mb-4">
+                  ¿Estas seguro de eliminar <strong>{selectedOpp?.TITLE}</strong>? Esta accion no se puede deshacer.
+                </p>
+              )}
               <div className="flex gap-2 justify-end">
-                <button
-                  className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-                  onClick={() => setConfirmModal(null)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className={`px-4 py-2 text-white rounded-lg ${confirmModal.type === "lost" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`}
-                  onClick={confirmStatus}
-                >
-                  Confirmar
-                </button>
+                <button className="px-4 py-2 border rounded-lg hover:bg-gray-50" onClick={() => { setConfirmModal(null); setLostReason(""); }}>Cancelar</button>
+                <button className={`px-4 py-2 text-white rounded-lg ${confirmModal.type === "delete" ? "bg-red-600 hover:bg-red-700" : confirmModal.type === "lost" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`} onClick={confirmAction}>Confirmar</button>
               </div>
             </div>
           </div>

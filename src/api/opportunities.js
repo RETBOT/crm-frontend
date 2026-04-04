@@ -23,9 +23,14 @@ export const getOpportunities = async (filtros = {}) =>
       CUSTOMER_ID: filtros.CUSTOMER_ID ?? null,
       STATUS: filtros.STATUS || "",
       STAGE_ID: filtros.STAGE_ID ?? null,
+      OWNER_USER_ID: filtros.OWNER_USER_ID ?? null,
+      CLOSE_DATE_FROM: filtros.CLOSE_DATE_FROM || null,
+      CLOSE_DATE_TO: filtros.CLOSE_DATE_TO || null,
       SEARCH: filtros.SEARCH || "",
       NPAG: filtros.NPAG || 1,
-      TPAG: filtros.TPAG || 50,
+      TPAG: filtros.TPAG || 20,
+      SORT_BY: filtros.SORT_BY || "stage_order",
+      SORT_DIR: filtros.SORT_DIR || "ASC",
     }, authHeader());
     return res.data;
   });
@@ -75,5 +80,11 @@ export const reopenOpportunity = async (opportunityId) =>
 export const getPipelines = async () =>
   withRefresh(async () => {
     const res = await axios.get(`${url}cn/pipelines`, authHeader());
+    return res.data;
+  });
+
+export const deleteOpportunity = async (opportunityId) =>
+  withRefresh(async () => {
+    const res = await axios.post(`${url}cn/oportunidades_eliminar`, { OPPORTUNITY_ID: opportunityId }, authHeader());
     return res.data;
   });

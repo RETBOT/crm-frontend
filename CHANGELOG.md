@@ -37,6 +37,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Notas del check-in ahora se muestran en la lista del mapa
 - Filtro de tipo de actividad en check-ins ahora se envía al backend
 - `CheckinFlyTo` ya no se borra inmediatamente al seleccionar check-in
+- Bug crítico en contactos: `CLIENTEID` se enviaba como PK numérico (5) en vez de customer_code ("100001") → "No tiene acceso a este cliente/prospecto"
+- Bug en contactos: doble fetch al cargar la página
+- Bug en contactos: sin estado `saving` en ContactForm
+- Bug en contactos: sin permisos `hasPermission()` en botones de crear/editar/eliminar
+- Bug en contactos: sin validación de `response.resultado === 1`
+- Bug en actividades: filtro de responsable no aparecía (bloqueado por `canAssign`)
+- Bug en actividades: fechas del filtro incluían día anterior por diferencia UTC/local
+- Bug en actividades: `getActivityUsersHandler` backend usaba `_req` pero referenciaba `req`
+- Bug en accounts.jsx: link de WhatsApp no limpiaba caracteres no numéricos
+- Mejoras en actividades: filtros avanzados (tipo, cliente, prioridad, responsable, rango de fechas)
+- Mejoras en actividades: ordenamiento por columnas (fecha, prioridad, estado)
+- Mejoras en actividades: panel de detalle como drawer lateral
+- Mejoras en actividades: paginación configurable (10, 20, 50, 100)
+- Mejoras en actividades: sticky header de tabla
+- Mejoras en actividades: fix conflicto visual vencida/seleccionada
 
 ---
 

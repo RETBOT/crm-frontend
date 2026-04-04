@@ -17,6 +17,12 @@ export const getActividades = async (filtros = {}) => {
         SEARCH: filtros.SEARCH || "",
         NPAG: filtros.NPAG || 1,
         TPAG: filtros.TPAG || 20,
+        PRIORITY: filtros.PRIORITY || "",
+        OWNER_USER_ID: filtros.OWNER_USER_ID ?? null,
+        DUE_FROM: filtros.DUE_FROM || null,
+        DUE_TO: filtros.DUE_TO || null,
+        SORT_BY: filtros.SORT_BY || "status",
+        SORT_DIR: filtros.SORT_DIR || "ASC",
       },
       {
         headers: {

@@ -558,7 +558,7 @@ export function Accounts() {
                           <div>
                             <span className="font-medium text-gray-500">WhatsApp:</span>{" "}
                             <a
-                              href={`https://wa.me/${contacto.WHATSAPP}`}
+                              href={`https://wa.me/${contacto.WHATSAPP.replace(/\D/g, "")}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-green-600 hover:underline"

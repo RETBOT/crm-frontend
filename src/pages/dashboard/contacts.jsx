@@ -12,6 +12,7 @@ import {
 import { getClientes, getContactos, contactos_ABC, getPuestos } from "../../api/accounts";
 import { getTiposActividad, crearActividad } from "../../api/activities";
 import { ContactForm, ActivityForm, Notification } from "../../components/index";
+import { hasPermission } from "../../utils/auth";
 
 export function Contacts() {
   const [customers, setCustomers] = useState([]);
@@ -27,6 +28,7 @@ export function Contacts() {
   const [formCustomerId, setFormCustomerId] = useState("");
   const [activityTypes, setActivityTypes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
 
@@ -82,7 +84,7 @@ export function Contacts() {
     setLoading(true);
     setError("");
     try {
-      const clienteId = selectedCustomerId ? Number(selectedCustomerId) : "";
+      const clienteId = selectedCustomerId || "";
       const res = await getContactos(clienteId);
       const data = Array.isArray(res) ? res : res.data || [];
       setContacts(data);
@@ -98,10 +100,6 @@ export function Contacts() {
     fetchContacts();
     setSelectedContact(null);
   }, [selectedCustomerId]);
-
-  useEffect(() => {
-    fetchContacts();
-  }, []);
 
   const filteredContacts = contacts.filter((c) => {
     if (!searchTerm) return true;
@@ -120,8 +118,9 @@ export function Contacts() {
       showNotification("Selecciona un cliente para crear el contacto", "error");
       return;
     }
+    setSaving(true);
     try {
-      await contactos_ABC(
+      const response = await contactos_ABC(
         customerId,
         0,
         formData.NOMBRE,
@@ -135,20 +134,27 @@ export function Contacts() {
         formData.EMAIL,
         "A"
       );
-      showNotification("Contacto creado correctamente");
-      setShowContactForm(false);
-      setEditingContact(null);
-      setFormCustomerId("");
-      fetchContacts();
+      if (response.resultado === 1) {
+        showNotification(response.msg || "Contacto creado correctamente");
+        setShowContactForm(false);
+        setEditingContact(null);
+        setFormCustomerId("");
+        fetchContacts();
+      } else {
+        showNotification(response.msg || "No se pudo crear el contacto", "error");
+      }
     } catch (err) {
       showNotification(err?.message || "Error al crear contacto", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleUpdateContact = async (formData) => {
+    setSaving(true);
     try {
-      const customerId = editingContact.customer_id || selectedCustomerId;
-      await contactos_ABC(
+      const customerId = editingContact.CLIENTEID || selectedCustomerId;
+      const response = await contactos_ABC(
         customerId,
         editingContact.ID || editingContact.contact_id,
         formData.NOMBRE,
@@ -162,20 +168,30 @@ export function Contacts() {
         formData.EMAIL,
         "C"
       );
-      showNotification("Contacto actualizado correctamente");
-      setShowContactForm(false);
-      setEditingContact(null);
-      fetchContacts();
+      if (response.resultado === 1) {
+        showNotification(response.msg || "Contacto actualizado correctamente");
+        setShowContactForm(false);
+        setEditingContact(null);
+        fetchContacts();
+      } else {
+        showNotification(response.msg || "No se pudo actualizar el contacto", "error");
+      }
     } catch (err) {
       showNotification(err?.message || "Error al actualizar contacto", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDeleteContact = async (contact) => {
+    if (!hasPermission("customers.update")) {
+      showNotification("No cuenta con permisos para eliminar contactos", "error");
+      return;
+    }
     if (!window.confirm(`Desea eliminar el contacto ${contact.NOMBRE} ${contact.APATERNO}?`)) return;
     try {
-      const customerId = contact.customer_id || selectedCustomerId;
-      await contactos_ABC(
+      const customerId = contact.CLIENTEID || selectedCustomerId;
+      const response = await contactos_ABC(
         customerId,
         contact.ID || contact.contact_id,
         contact.NOMBRE,
@@ -189,9 +205,13 @@ export function Contacts() {
         contact.EMAIL,
         "B"
       );
-      showNotification("Contacto eliminado correctamente");
-      if (selectedContact?.ID === contact.ID) setSelectedContact(null);
-      fetchContacts();
+      if (response.resultado === 1) {
+        showNotification(response.msg || "Contacto eliminado correctamente");
+        if (selectedContact?.ID === contact.ID) setSelectedContact(null);
+        fetchContacts();
+      } else {
+        showNotification(response.msg || "No se pudo eliminar el contacto", "error");
+      }
     } catch (err) {
       showNotification(err?.message || "Error al eliminar contacto", "error");
     }
@@ -205,26 +225,30 @@ export function Contacts() {
   };
 
   const openEditContact = (contact) => {
+    if (!hasPermission("customers.update")) {
+      showNotification("No cuenta con permisos para editar contactos", "error");
+      return;
+    }
     setEditingContact(contact);
     setShowContactForm(true);
     setShowActivityForm(false);
   };
 
   const openCreateActivity = (contact) => {
-    const customerId = contact.customer_id || contact.CLIENTEID;
+    const customerId = contact.CLIENTEID || contact.customer_id;
     setActivityContact(contact);
     setShowActivityForm(true);
     setShowContactForm(false);
   };
 
   const getActivityCustomerId = () => {
-    if (selectedCustomerId) return Number(selectedCustomerId);
-    if (activityContact) return Number(activityContact.customer_id);
+    if (selectedCustomerId) return selectedCustomerId;
+    if (activityContact) return activityContact.CLIENTEID || activityContact.customer_id;
     return 0;
   };
 
   const selectedCustomer = customers.find(
-    (c) => String(c.customer_id || c.CLIENTEID) === String(selectedCustomerId)
+    (c) => String(c.CLIENTEID || c.customer_id) === String(selectedCustomerId)
   );
 
   return (
@@ -246,7 +270,7 @@ export function Contacts() {
             >
               <option value="">Todos los clientes</option>
               {customers.map((c) => (
-                <option key={c.customer_id || c.CLIENTEID} value={c.customer_id || c.CLIENTEID}>
+                <option key={c.CLIENTEID || c.customer_id} value={c.CLIENTEID || c.customer_id}>
                   {c.customer_name || c.NOMBRECLI}
                 </option>
               ))}
@@ -262,17 +286,19 @@ export function Contacts() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <button
-              className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap"
-              onClick={() => {
-                setEditingContact(null);
-                setShowContactForm(true);
-                setShowActivityForm(false);
-                if (!selectedCustomerId) setFormCustomerId("");
-              }}
-            >
-              <FiPlus className="mr-1" /> Nuevo Contacto
-            </button>
+            {hasPermission("customers.update") && (
+              <button
+                className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm whitespace-nowrap"
+                onClick={() => {
+                  setEditingContact(null);
+                  setShowContactForm(true);
+                  setShowActivityForm(false);
+                  if (!selectedCustomerId) setFormCustomerId("");
+                }}
+              >
+                <FiPlus className="mr-1" /> Nuevo Contacto
+              </button>
+            )}
           </div>
 
           {showContactForm && (
@@ -287,7 +313,7 @@ export function Contacts() {
                   >
                     <option value="">Selecciona un cliente para el contacto</option>
                     {customers.map((c) => (
-                      <option key={c.customer_id || c.CLIENTEID} value={c.customer_id || c.CLIENTEID}>
+                <option key={c.CLIENTEID || c.customer_id} value={c.CLIENTEID || c.customer_id}>
                         {c.customer_name || c.NOMBRECLI}
                       </option>
                     ))}
@@ -305,6 +331,7 @@ export function Contacts() {
                     setFormCustomerId("");
                   }}
                   isEditing={!!editingContact}
+                  saving={saving}
                 />
               )}
             </div>
@@ -395,26 +422,30 @@ export function Contacts() {
                       </td>
                       <td className="p-3">
                         <div className="flex gap-1">
-                          <button
-                            className="p-1.5 rounded hover:bg-gray-200 text-gray-500"
-                            title="Editar"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEditContact(contact);
-                            }}
-                          >
-                            <FiEdit2 size={14} />
-                          </button>
-                          <button
-                            className="p-1.5 rounded hover:bg-red-100 text-red-500"
-                            title="Eliminar"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteContact(contact);
-                            }}
-                          >
-                            <FiTrash2 size={14} />
-                          </button>
+                          {hasPermission("customers.update") && (
+                            <button
+                              className="p-1.5 rounded hover:bg-gray-200 text-gray-500"
+                              title="Editar"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditContact(contact);
+                              }}
+                            >
+                              <FiEdit2 size={14} />
+                            </button>
+                          )}
+                          {hasPermission("customers.update") && (
+                            <button
+                              className="p-1.5 rounded hover:bg-red-100 text-red-500"
+                              title="Eliminar"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteContact(contact);
+                              }}
+                            >
+                              <FiTrash2 size={14} />
+                            </button>
+                          )}
                           <button
                             className="p-1.5 rounded hover:bg-blue-100 text-blue-500"
                             title="Crear Actividad"
@@ -512,13 +543,15 @@ export function Contacts() {
                 </div>
               )}
               <div className="md:col-span-2 flex justify-end gap-2">
-                <button
-                  className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-                  onClick={() => openEditContact(selectedContact)}
-                >
-                  <FiEdit2 className="inline mr-1" />
-                  Editar
-                </button>
+                {hasPermission("customers.update") && (
+                  <button
+                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    onClick={() => openEditContact(selectedContact)}
+                  >
+                    <FiEdit2 className="inline mr-1" />
+                    Editar
+                  </button>
+                )}
                 <button
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   onClick={() => openCreateActivity(selectedContact)}

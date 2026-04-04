@@ -117,6 +117,7 @@ export function Reports() {
     isActive: true,
   });
   const [editingSchedule, setEditingSchedule] = useState(null);
+  const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
 
   const visibleTabs = TABS.filter((tab) => hasPermission(tab.permission));
 
@@ -208,7 +209,7 @@ export function Reports() {
     try {
       const parsedFilters = typeof view.filters === "string" ? JSON.parse(view.filters) : view.filters;
       setFilters({ ...DEFAULT_FILTERS, ...parsedFilters });
-      if (view.report_type) setActiveTab(view.report_type);
+      if (view.reportType) setActiveTab(view.reportType);
       setShowViewsDropdown(false);
     } catch (err) {
       setError(err?.message || "Error al cargar vista");
@@ -216,6 +217,7 @@ export function Reports() {
   };
 
   const handleDeleteView = async (viewId) => {
+    if (!window.confirm("¿Eliminar esta vista guardada?")) return;
     try {
       await deleteSavedView(viewId);
       loadSavedViews();
@@ -244,7 +246,7 @@ export function Reports() {
     const recipients = scheduleForm.recipients.split(",").map(e => e.trim()).filter(e => e);
     try {
       if (editingSchedule) {
-        await updateScheduledReport(editingSchedule.schedule_id, {
+        await updateScheduledReport(editingSchedule.scheduleId, {
           frequency: scheduleForm.frequency,
           dayOfWeek: scheduleForm.dayOfWeek,
           dayOfMonth: scheduleForm.dayOfMonth,
@@ -276,13 +278,14 @@ export function Reports() {
 
   const handleEditSchedule = (schedule) => {
     setEditingSchedule(schedule);
+    const recips = Array.isArray(schedule.recipients) ? schedule.recipients.join(", ") : (schedule.recipients || "");
     setScheduleForm({
-      reportType: schedule.report_type || "dashboard",
+      reportType: schedule.reportType || "dashboard",
       frequency: schedule.frequency || "weekly",
-      dayOfWeek: schedule.day_of_week ?? 1,
-      dayOfMonth: schedule.day_of_month ?? 1,
-      recipients: schedule.recipients || "",
-      isActive: schedule.is_active !== false,
+      dayOfWeek: schedule.dayOfWeek ?? 1,
+      dayOfMonth: schedule.dayOfMonth ?? 1,
+      recipients: recips,
+      isActive: schedule.isActive !== false,
     });
     setShowScheduleModal(true);
   };
@@ -299,9 +302,13 @@ export function Reports() {
 
   const handleToggleSchedule = async (schedule) => {
     try {
-      await updateScheduledReport(schedule.schedule_id, {
-        ...schedule,
-        isActive: !schedule.is_active,
+      await updateScheduledReport(schedule.scheduleId, {
+        frequency: schedule.frequency,
+        dayOfWeek: schedule.dayOfWeek,
+        dayOfMonth: schedule.dayOfMonth,
+        recipients: Array.isArray(schedule.recipients) ? schedule.recipients : schedule.recipients.split(","),
+        filters: schedule.filters || {},
+        isActive: !schedule.isActive,
       });
       loadScheduledReports();
     } catch (err) {
@@ -331,6 +338,14 @@ export function Reports() {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Notification */}
+      {notification.show && (
+        <div className={`mb-4 p-4 rounded ${notification.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"} flex justify-between items-center`}>
+          <span>{notification.message}</span>
+          <button onClick={() => setNotification({ ...notification, show: false })} className="text-xs underline ml-2">×</button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6 flex justify-between items-start">
         <div>
@@ -363,17 +378,17 @@ export function Reports() {
                       </div>
                     ) : (
                       savedViews.map((view) => (
-                        <div key={view.view_id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded">
+                        <div key={view.viewId} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded">
                           <button
                             className="flex-1 text-left text-sm"
                             onClick={() => handleLoadView(view)}
                           >
-                            <div className="font-medium">{view.view_name}</div>
-                            <div className="text-xs text-gray-500">{view.report_type}</div>
+                            <div className="font-medium">{view.viewName}</div>
+                            <div className="text-xs text-gray-500">{view.reportType}</div>
                           </button>
                           <button
                             className="text-red-400 hover:text-red-600 ml-2"
-                            onClick={() => handleDeleteView(view.view_id)}
+                            onClick={() => handleDeleteView(view.viewId)}
                           >
                             <FiTrash2 size={12} />
                           </button>
@@ -557,20 +572,20 @@ export function Reports() {
                 </thead>
                 <tbody>
                   {scheduledReports.map((s) => (
-                    <tr key={s.schedule_id} className="border-t hover:bg-gray-50">
-                      <td className="p-2 font-medium">{s.report_type}</td>
+                    <tr key={s.scheduleId} className="border-t hover:bg-gray-50">
+                      <td className="p-2 font-medium">{s.reportType}</td>
                       <td className="p-2">{formatFrequency(s.frequency)}</td>
-                      <td className="p-2 text-xs truncate max-w-[150px]" title={s.recipients}>{s.recipients}</td>
-                      <td className="p-2 text-xs">{formatNextRun(s.next_run_at)}</td>
+                      <td className="p-2 text-xs truncate max-w-[150px]" title={Array.isArray(s.recipients) ? s.recipients.join(", ") : s.recipients}>{Array.isArray(s.recipients) ? s.recipients.join(", ") : s.recipients}</td>
+                      <td className="p-2 text-xs">{formatNextRun(s.nextRunAt)}</td>
                       <td className="p-2 text-center">
                         <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" className="sr-only peer" checked={s.is_active} onChange={() => handleToggleSchedule(s)} />
+                          <input type="checkbox" className="sr-only peer" checked={s.isActive} onChange={() => handleToggleSchedule(s)} />
                           <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
                         </label>
                       </td>
                       <td className="p-2 text-center space-x-1">
                         <button className="text-blue-600 hover:text-blue-800" onClick={() => handleEditSchedule(s)}><FiEdit2 size={14} className="inline" /></button>
-                        <button className="text-red-600 hover:text-red-800" onClick={() => handleDeleteSchedule(s.schedule_id)}><FiTrash2 size={14} className="inline" /></button>
+                        <button className="text-red-600 hover:text-red-800" onClick={() => handleDeleteSchedule(s.scheduleId)}><FiTrash2 size={14} className="inline" /></button>
                       </td>
                     </tr>
                   ))}

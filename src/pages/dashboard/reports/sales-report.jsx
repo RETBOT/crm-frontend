@@ -170,7 +170,7 @@ export function SalesReport({ data, filters }) {
                     <td className="px-4 py-3 font-medium">{row.period}</td>
                     <td className="px-4 py-3">{row.sellerName || "-"}</td>
                     <td className="px-4 py-3 text-right">
-                      ${row.totalSales.toLocaleString()}
+                      ${(row.totalSales || 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-right">{row.wonCount}</td>
                   </tr>

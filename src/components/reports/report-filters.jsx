@@ -96,9 +96,11 @@ export function ReportFilters({
   };
 
   const getDateRange = (preset) => {
-    const today = new Date();
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDay = new Date(today);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
 
     switch (preset) {
       case "today":
@@ -166,7 +168,7 @@ export function ReportFilters({
   };
 
   const handleMultiSelectChange = (field, values) => {
-    const parsed = values ? values.split(",").map(v => parseInt(v.trim())).filter(v => !isNaN(v)) : [];
+    const parsed = Array.isArray(values) ? values : (values ? values.split(",").map(v => parseInt(v.trim())).filter(v => !isNaN(v)) : []);
     const newFilters = { ...localFilters, [field]: parsed };
     setLocalFilters(newFilters);
   };
@@ -193,6 +195,7 @@ export function ReportFilters({
     setLocalFilters(clearedFilters);
     onChange(clearedFilters);
     if (onClear) onClear();
+    if (onApply) onApply();
   };
 
   const formatMultiSelectValue = (arr) => {

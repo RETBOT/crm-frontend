@@ -33,7 +33,7 @@ export function CustomersReport({ data, filters }) {
   ].filter((item) => item.value > 0);
 
   const recurrentData = recurrentCustomers.slice(0, 10).map((item) => ({
-    name: item.customerName?.substring(0, 15) + "..." || "Cliente",
+    name: item.customerName?.length > 15 ? item.customerName.substring(0, 15) + "..." : (item.customerName || "Cliente"),
     Compras: item.purchaseCount,
     Total: item.totalPurchases,
   }));

@@ -89,6 +89,11 @@ export function Reports() {
 
   const visibleTabs = TABS.filter((tab) => hasPermission(tab.permission));
 
+  // Fallback si el tab activo ya no es visible
+  if (visibleTabs.length > 0 && !visibleTabs.find((t) => t.id === activeTab)) {
+    setActiveTab(visibleTabs[0].id);
+  }
+
   const loadData = useCallback(async () => {
     if (!hasPermission("reports.view")) return;
 
@@ -137,7 +142,8 @@ export function Reports() {
   };
 
   const handleApplyFilters = () => {
-    loadData();
+    // loadData ya se ejecuta via useEffect cuando filters cambia
+    // No llamar loadData() aquí para evitar doble carga
   };
 
   const handleSaveView = (viewFilters) => {

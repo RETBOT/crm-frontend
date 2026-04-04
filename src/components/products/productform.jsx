@@ -5,18 +5,20 @@ import { PERMISSIONS } from "../../utils/permissions";
 export const ProductForm = ({
   title,
   initialData,
+  categories = [],
   submitLabel,
   onSave,
   onCancel,
+  saving = false,
 }) => {
   const canEditPrice = hasPermission(PERMISSIONS.PRODUCTS_PRICE_EDIT);
   const [formData, setFormData] = useState({
     SKU: initialData?.SKU || "",
-    PRODUCT_NAME: initialData?.NOMBRE || initialData?.NAME || "",
-    DESCRIPTION: initialData?.DESCRIPCION || initialData?.DESCRIPTION || "",
-    UNIT_PRICE: initialData?.PRECIO || initialData?.UNIT_PRICE || 0,
+    PRODUCT_NAME: initialData?.NAME || initialData?.PRODUCT_NAME || "",
+    DESCRIPTION: initialData?.DESCRIPTION || initialData?.DESCRIPCION || "",
+    UNIT_PRICE: initialData?.UNIT_PRICE || initialData?.PRECIO || 0,
+    CATEGORY_ID: initialData?.CATEGORY_ID || "",
   });
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
@@ -27,14 +29,19 @@ export const ProductForm = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setSaving(true);
+
+    if (!formData.PRODUCT_NAME.trim()) {
+      setError("El nombre del producto es requerido");
+      return;
+    }
 
     try {
       const payload = {
-        SKU: formData.SKU,
-        PRODUCT_NAME: formData.PRODUCT_NAME,
-        DESCRIPTION: formData.DESCRIPTION,
+        SKU: formData.SKU.trim(),
+        PRODUCT_NAME: formData.PRODUCT_NAME.trim(),
+        DESCRIPTION: formData.DESCRIPTION.trim(),
         UNIT_PRICE: canEditPrice ? Number(formData.UNIT_PRICE) || 0 : 0,
+        CATEGORY_ID: formData.CATEGORY_ID ? Number(formData.CATEGORY_ID) : null,
       };
 
       if (initialData?.ID) {
@@ -44,8 +51,6 @@ export const ProductForm = ({
       await onSave(payload);
     } catch (err) {
       setError(err?.message || "Error al guardar");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -63,17 +68,18 @@ export const ProductForm = ({
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">SKU <span className="text-red-500">*</span></label>
             <input
               name="SKU"
               value={formData.SKU}
               onChange={handleChange}
               className="border rounded p-2 w-full"
               placeholder="Código del producto"
+              required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del producto</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del producto <span className="text-red-500">*</span></label>
             <input
               name="PRODUCT_NAME"
               value={formData.PRODUCT_NAME}
@@ -83,6 +89,22 @@ export const ProductForm = ({
               required
             />
           </div>
+          {categories.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+              <select
+                name="CATEGORY_ID"
+                value={formData.CATEGORY_ID}
+                onChange={handleChange}
+                className="border rounded p-2 w-full"
+              >
+                <option value="">Sin categoría</option>
+                {categories.map((c) => (
+                  <option key={c.ID} value={c.ID}>{c.NAME}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Precio unitario ($)</label>
             <input
@@ -101,7 +123,7 @@ export const ProductForm = ({
               <p className="text-xs text-gray-500 mt-1">No tiene permisos para editar precios</p>
             )}
           </div>
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
             <textarea
               name="DESCRIPTION"

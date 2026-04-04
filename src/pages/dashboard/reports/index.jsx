@@ -6,6 +6,10 @@ import {
   FiActivity,
   FiTrendingUp,
   FiPackage,
+  FiSave,
+  FiFolder,
+  FiTrash2,
+  FiX,
 } from "react-icons/fi";
 import { hasPermission } from "../../../utils/auth";
 import { ReportFilters } from "../../../components/reports/report-filters";
@@ -16,6 +20,9 @@ import {
   getActivitiesReport,
   getOpportunitiesReport,
   getProductsReport,
+  getSavedViews,
+  createSavedView,
+  deleteSavedView,
 } from "../../../api/reports";
 
 import { DashboardReport } from "./dashboard-report";
@@ -86,6 +93,10 @@ export function Reports() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
+  const [savedViews, setSavedViews] = useState([]);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [viewName, setViewName] = useState("");
+  const [showViewsDropdown, setShowViewsDropdown] = useState(false);
 
   const visibleTabs = TABS.filter((tab) => hasPermission(tab.permission));
 
@@ -143,12 +154,52 @@ export function Reports() {
 
   const handleApplyFilters = () => {
     // loadData ya se ejecuta via useEffect cuando filters cambia
-    // No llamar loadData() aquí para evitar doble carga
   };
 
-  const handleSaveView = (viewFilters) => {
-    // TODO: Implementar guardado de vistas
-    console.log("Guardar vista:", viewFilters);
+  const loadSavedViews = useCallback(async () => {
+    if (!hasPermission("reports.saved_views")) return;
+    try {
+      const res = await getSavedViews();
+      setSavedViews(Array.isArray(res) ? res : []);
+    } catch { setSavedViews([]); }
+  }, []);
+
+  useEffect(() => { loadSavedViews(); }, [loadSavedViews]);
+
+  const handleSaveView = async () => {
+    if (!viewName.trim()) return;
+    try {
+      await createSavedView({
+        view_name: viewName.trim(),
+        report_type: activeTab,
+        filters: JSON.stringify(filters),
+      });
+      setViewName("");
+      setShowSaveModal(false);
+      loadSavedViews();
+    } catch (err) {
+      setError(err?.message || "Error al guardar vista");
+    }
+  };
+
+  const handleLoadView = async (view) => {
+    try {
+      const parsedFilters = typeof view.filters === "string" ? JSON.parse(view.filters) : view.filters;
+      setFilters({ ...DEFAULT_FILTERS, ...parsedFilters });
+      if (view.report_type) setActiveTab(view.report_type);
+      setShowViewsDropdown(false);
+    } catch (err) {
+      setError(err?.message || "Error al cargar vista");
+    }
+  };
+
+  const handleDeleteView = async (viewId) => {
+    try {
+      await deleteSavedView(viewId);
+      loadSavedViews();
+    } catch (err) {
+      setError(err?.message || "Error al eliminar vista");
+    }
   };
 
   if (!hasPermission("reports.view")) {
@@ -162,20 +213,95 @@ export function Reports() {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Reportes</h1>
-        <p className="text-gray-600">
-          Analiza el rendimiento de tu negocio con reportes detallados
-        </p>
+      <div className="mb-6 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Reportes</h1>
+          <p className="text-gray-600">
+            Analiza el rendimiento de tu negocio con reportes detallados
+          </p>
+        </div>
+        {hasPermission("reports.saved_views") && (
+          <div className="flex gap-2 relative">
+            {/* Load saved views dropdown */}
+            {savedViews.length > 0 && (
+              <div className="relative">
+                <button
+                  className="flex items-center gap-1 px-3 py-2 border rounded-lg text-sm hover:bg-gray-50"
+                  onClick={() => setShowViewsDropdown(!showViewsDropdown)}
+                >
+                  <FiFolder size={14} /> Vistas guardadas
+                </button>
+                {showViewsDropdown && (
+                  <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-50 min-w-64">
+                    <div className="p-2 max-h-64 overflow-y-auto">
+                      {savedViews.map((view) => (
+                        <div key={view.view_id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 rounded">
+                          <button
+                            className="flex-1 text-left text-sm"
+                            onClick={() => handleLoadView(view)}
+                          >
+                            <div className="font-medium">{view.view_name}</div>
+                            <div className="text-xs text-gray-500">{view.report_type}</div>
+                          </button>
+                          <button
+                            className="text-red-400 hover:text-red-600 ml-2"
+                            onClick={() => handleDeleteView(view.view_id)}
+                          >
+                            <FiTrash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Save current view */}
+            <button
+              className="flex items-center gap-1 px-3 py-2 border rounded-lg text-sm hover:bg-gray-50"
+              onClick={() => setShowSaveModal(true)}
+            >
+              <FiSave size={14} /> Guardar vista
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Save View Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">Guardar vista</h3>
+              <button onClick={() => { setShowSaveModal(false); setViewName(""); }}>
+                <FiX size={18} />
+              </button>
+            </div>
+            <input
+              className="w-full border rounded-lg px-3 py-2 mb-4"
+              placeholder="Nombre de la vista"
+              value={viewName}
+              onChange={(e) => setViewName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSaveView()}
+            />
+            <div className="flex gap-2 justify-end">
+              <button className="px-4 py-2 border rounded-lg hover:bg-gray-50" onClick={() => { setShowSaveModal(false); setViewName(""); }}>Cancelar</button>
+              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={!viewName.trim()} onClick={handleSaveView}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Click outside to close views dropdown */}
+      {showViewsDropdown && (
+        <div className="fixed inset-0 z-40" onClick={() => setShowViewsDropdown(false)} />
+      )}
 
       {/* Filtros */}
       <ReportFilters
         filters={filters}
         onChange={handleFiltersChange}
         onApply={handleApplyFilters}
-        onSaveView={handleSaveView}
-        showSaveView={hasPermission("reports.saved_views")}
         loading={loading}
       />
 

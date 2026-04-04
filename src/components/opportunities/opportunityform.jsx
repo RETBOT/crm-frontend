@@ -66,9 +66,7 @@ export const OpportunityForm = ({
   };
 
   const handleItemChange = (index, field, value) => {
-    // El precio no se puede editar manualmente (solo se auto-completa desde el producto)
-    if (field === "UNIT_PRICE") return;
-    // No permitir cambio de descuento
+    if (field === "UNIT_PRICE" && !canEditPrice) return;
     if (field === "DISCOUNT_PCT") return;
     setItems((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
@@ -252,8 +250,8 @@ export const OpportunityForm = ({
                       type="number"
                       step="0.01"
                       value={item.UNIT_PRICE}
-                      readOnly
-                      disabled
+                      readOnly={!canEditPrice}
+                      disabled={!canEditPrice}
                     />
                   </div>
                   <div className="col-span-1 text-center">

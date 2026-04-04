@@ -36,6 +36,10 @@ export function Opportunities() {
   const [products, setProducts] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
+  const [opLoading, setOpLoading] = useState(false);
+  const [lostReasonModal, setLostReasonModal] = useState(false);
+  const [lostReason, setLostReason] = useState("");
+  const [confirmModal, setConfirmModal] = useState(null);
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedSearch(searchTerm), 400);
@@ -116,20 +120,14 @@ export function Opportunities() {
 
   const openStageIds = useMemo(() => Object.keys(stageMap).map(Number).filter((id) => !stageMap[id]?.is_closed), [stageMap]);
 
-  const filteredOpps = opportunities.filter((opp) => {
-    if (!searchTerm) return true;
-    const s = searchTerm.toLowerCase();
-    return (opp.TITLE || "").toLowerCase().includes(s) || (opp.NOMBRECLI || "").toLowerCase().includes(s);
-  });
-
   const opportunitiesByStage = useMemo(() => {
     const grouped = {};
     openStageIds.forEach((id) => { grouped[id] = []; });
-    filteredOpps.forEach((opp) => {
+    opportunities.forEach((opp) => {
       if (grouped[opp.STAGE_ID]) grouped[opp.STAGE_ID].push(opp);
     });
     return grouped;
-  }, [filteredOpps, openStageIds]);
+  }, [opportunities, openStageIds]);
 
   const onDragEnd = async (result) => {
     if (!result.destination) return;
@@ -168,17 +166,63 @@ export function Opportunities() {
 
   const handleAdvanceStage = async () => {
     if (!selectedOpp) return;
-    const currentOrder = selectedOpp.STAGE_ORDER || 0;
-    const nextStage = pipelines
-      .filter((p) => !p.IS_CLOSED && p.STAGE_ORDER > currentOrder)
-      .sort((a, b) => a.STAGE_ORDER - b.STAGE_ORDER)[0];
-    if (!nextStage) { showNotification("Ya esta en la ultima etapa", "error"); return; }
+    setOpLoading(true);
     try {
+      const currentOrder = selectedOpp.STAGE_ORDER || 0;
+      const nextStage = pipelines
+        .filter((p) => !p.IS_CLOSED && p.STAGE_ORDER > currentOrder)
+        .sort((a, b) => a.STAGE_ORDER - b.STAGE_ORDER)[0];
+      if (!nextStage) { showNotification("Ya esta en la ultima etapa", "error"); setOpLoading(false); return; }
       await advanceStage(selectedOpp.OPPORTUNITYID, nextStage.ID);
       showNotification("Etapa avanzada");
       loadData();
       setSelectedOpp(null);
     } catch (err) { showNotification(err?.message, "error"); }
+    finally { setOpLoading(false); }
+  };
+
+  const handleSetStatus = async (status, reason) => {
+    if (!selectedOpp) return;
+    setOpLoading(true);
+    try {
+      await setOpportunityStatus(selectedOpp.OPPORTUNITYID, status, reason || "");
+      showNotification(status === "ganada" ? "Oportunidad ganada!" : "Oportunidad marcada como perdida");
+      loadData();
+      setSelectedOpp(null);
+    } catch (err) { showNotification(err?.message, "error"); }
+    finally { setOpLoading(false); }
+  };
+
+  const handleSetStatusWithReason = (status) => {
+    if (status === "perdida") {
+      setLostReason("");
+      setConfirmModal({ type: "lost" });
+    } else {
+      setConfirmModal({ type: "won" });
+    }
+  };
+
+  const confirmStatus = async () => {
+    if (confirmModal?.type === "lost") {
+      setLostReasonModal(false);
+      await handleSetStatus("perdida", lostReason);
+    } else if (confirmModal?.type === "won") {
+      setConfirmModal(null);
+      await handleSetStatus("ganada");
+    }
+    setConfirmModal(null);
+  };
+
+  const handleReopen = async () => {
+    if (!selectedOpp) return;
+    setOpLoading(true);
+    try {
+      await reopenOpportunity(selectedOpp.OPPORTUNITYID);
+      showNotification("Oportunidad reabierta");
+      loadData();
+      setSelectedOpp(null);
+    } catch (err) { showNotification(err?.message, "error"); }
+    finally { setOpLoading(false); }
   };
 
   const handleSetStatus = async (status) => {
@@ -272,7 +316,7 @@ export function Opportunities() {
                 </tr>
               </thead>
               <tbody>
-                {filteredOpps.map((opp) => (
+                {opportunities.map((opp) => (
                   <tr key={opp.OPPORTUNITYID} className="border-t hover:bg-blue-50 cursor-pointer" onClick={() => selectOpp(opp)}>
                     <td className="px-4 py-3 font-medium">{opp.TITLE}</td>
                     <td className="px-4 py-3"><div className="font-medium">{opp.NOMBRECLI}</div><div className="text-sm text-gray-500">{opp.CONTACT_NAME}</div></td>
@@ -367,6 +411,7 @@ export function Opportunities() {
                     </div>
                     <div><label className="block text-sm font-medium text-gray-500">Valor Estimado</label><p className="mt-1 font-medium text-xl">{formatAmount(selectedOpp.AMOUNT)}</p></div>
                     <div><label className="block text-sm font-medium text-gray-500">Fecha de Cierre</label><p className="mt-1 font-medium">{formatDate(selectedOpp.CLOSE_DATE)}</p></div>
+                    <div><label className="block text-sm font-medium text-gray-500">Ingreso Esperado</label><p className="mt-1 font-medium text-xl text-green-600">{formatAmount((selectedOpp.AMOUNT || 0) * (selectedOpp.PROBABILITY || 0) / 100)}</p></div>
                   </div>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
@@ -407,15 +452,52 @@ export function Opportunities() {
               <div className="flex justify-end space-x-3">
                 {selectedOpp.STATUS === "abierta" && (
                   <>
-                    <button className="px-4 py-2 border rounded-lg hover:bg-gray-50" onClick={() => { setEditingOpp(selectedOpp); setShowForm(true); setSelectedOpp(null); loadContacts(selectedOpp.CUSTOMER_ID); }}>Editar</button>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onClick={handleAdvanceStage}>Avanzar Etapa</button>
-                    <button className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50" onClick={() => handleSetStatus("perdida")}>Marcar Perdida</button>
-                    <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700" onClick={() => handleSetStatus("ganada")}>Marcar Ganada</button>
+                    <button className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50" disabled={opLoading} onClick={() => { setEditingOpp(selectedOpp); setShowForm(true); setSelectedOpp(null); loadContacts(selectedOpp.CUSTOMER_ID); }}>Editar</button>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={opLoading} onClick={handleAdvanceStage}>Avanzar Etapa</button>
+                    <button className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50" disabled={opLoading} onClick={() => handleSetStatusWithReason("perdida")}>Marcar Perdida</button>
+                    <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50" disabled={opLoading} onClick={() => handleSetStatusWithReason("ganada")}>Marcar Ganada</button>
                   </>
                 )}
                 {selectedOpp.STATUS !== "abierta" && (
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onClick={handleReopen}>Reabrir</button>
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={opLoading} onClick={handleReopen}>Reabrir</button>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Confirmation Modal */}
+        {confirmModal && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+              <h3 className="text-lg font-bold mb-2">
+                {confirmModal.type === "lost" ? "Marcar como Perdida" : "Marcar como Ganada"}
+              </h3>
+              {confirmModal.type === "lost" && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Razon de la perdida</label>
+                  <textarea
+                    value={lostReason}
+                    onChange={(e) => setLostReason(e.target.value)}
+                    placeholder="Describe brevemente la razon..."
+                    rows={3}
+                    className="w-full border rounded-lg p-2 text-sm resize-none"
+                  />
+                </div>
+              )}
+              <div className="flex gap-2 justify-end">
+                <button
+                  className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                  onClick={() => setConfirmModal(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className={`px-4 py-2 text-white rounded-lg ${confirmModal.type === "lost" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`}
+                  onClick={confirmStatus}
+                >
+                  Confirmar
+                </button>
               </div>
             </div>
           </div>

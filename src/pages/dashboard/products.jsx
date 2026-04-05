@@ -163,18 +163,26 @@ export function Products() {
 
   const hasActiveFilters = filterStatus || filterCategory || sortBy !== "product_name";
 
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileView(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const startRow = totalRegs > 0 ? (page - 1) * pageSize + 1 : 0;
   const endRow = Math.min(page * pageSize, totalRegs);
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-start mb-6">
+        <div className="flex flex-wrap justify-between items-start gap-3 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Productos</h1>
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-800">Productos</h1>
             <p className="text-gray-600">Administración de catálogo de productos</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap gap-2">
             {hasPermission(PERMISSIONS.PRODUCTS_CREATE) && (
               <button
                 className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50"
@@ -263,6 +271,55 @@ export function Products() {
           <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
+            {isMobileView ? (
+              <div className="divide-y">
+                {products.map((product) => (
+                  <div
+                    key={product.ID}
+                    className="p-4 hover:bg-blue-50"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-base truncate">{product.NAME || "-"}</div>
+                        {product.SKU && (
+                          <div className="text-xs text-gray-400 mt-0.5">SKU: {product.SKU}</div>
+                        )}
+                        {product.CATEGORY_NAME && (
+                          <div className="text-sm text-gray-500 mt-0.5">{product.CATEGORY_NAME}</div>
+                        )}
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${product.IS_ACTIVE ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                        {product.IS_ACTIVE ? "Activo" : "Inactivo"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mt-2">
+                      <div className="font-bold text-blue-600 text-base">{formatAmount(product.UNIT_PRICE)}</div>
+                      <div className="flex gap-2">
+                        {hasPermission(PERMISSIONS.PRODUCTS_UPDATE) && (
+                          <button
+                            className="p-2 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                            onClick={() => { setShowForm(true); setEditingProduct(product); }}
+                          >
+                            <FiEdit2 size={16} />
+                          </button>
+                        )}
+                        {hasPermission(PERMISSIONS.PRODUCTS_DELETE) && product.IS_ACTIVE && (
+                          <button
+                            className="p-2 rounded bg-red-50 text-red-600 hover:bg-red-100"
+                            onClick={() => setConfirmModal({ product, type: "delete" })}
+                          >
+                            <FiTrash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {!loading && products.length === 0 && (
+                  <div className="py-8 text-center text-gray-500">No se encontraron productos</div>
+                )}
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-100">
@@ -313,6 +370,7 @@ export function Products() {
                 </tbody>
               </table>
             </div>
+            )}
             {totalRegs > 0 && (
               <div className="flex flex-col sm:flex-row justify-between items-center p-3 border-t gap-3">
                 <div className="flex items-center gap-3 text-sm text-gray-600">

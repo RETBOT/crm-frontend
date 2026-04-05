@@ -146,12 +146,12 @@ function CoordinatePicker({ lat, lon, onChange, addressFields }) {
         <span className="text-sm font-medium text-gray-700">Ubicacion en mapa</span>
       </div>
 
-      <div className="flex gap-2 mb-2">
+      <div className="flex flex-col sm:flex-row gap-2 mb-2">
         <div className="flex-1 relative">
           <FiSearch className="absolute left-3 top-2.5 text-gray-400" />
           <input
             className="pl-9 pr-3 py-2 w-full border rounded-lg text-sm"
-            placeholder="Buscar direccion (ej: Calle Victoria 500, Torreon)"
+            placeholder="Buscar direccion..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -171,7 +171,7 @@ function CoordinatePicker({ lat, lon, onChange, addressFields }) {
         <p className="text-xs text-red-500 mb-2">{searchError}</p>
       )}
 
-      <div className="rounded-lg overflow-hidden border" style={{ height: 280 }}>
+      <div className="rounded-lg overflow-hidden border h-48 sm:h-[280px]">
         <MapContainer
           center={center}
           zoom={hasCoords ? 15 : DEFAULT_ZOOM}

@@ -165,7 +165,7 @@ function LocateControl({ onLocationFound }) {
   };
 
   return (
-    <div className="absolute bottom-6 right-6 z-[1000] flex flex-col items-end gap-2">
+    <div className="absolute bottom-6 right-6 z-[250] flex flex-col items-end gap-2">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg shadow flex items-center gap-2">
           <span>{error}</span>
@@ -181,25 +181,10 @@ function LocateControl({ onLocationFound }) {
         title="Centrar en mi ubicación"
       >
         <FiNavigation className={locating ? 'animate-spin' : ''} size={16} />
-        {locating ? 'Ubicando...' : 'Mi ubicación'}
+        <span className="hidden sm:inline">{locating ? 'Ubicando...' : 'Mi ubicación'}</span>
       </button>
     </div>
   );
-}
-
-async function geocodeAddress(query) {
-  const url = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
-    q: query,
-    format: 'json',
-    limit: 1,
-    addressdetails: 1,
-  })}`;
-  const response = await fetch(url, {
-    headers: { 'User-Agent': 'RETFlow-CRM/1.0' },
-  });
-  const data = await response.json();
-  if (data.length === 0) return null;
-  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
 }
 
 function UserLocationMarker({ location }) {
@@ -222,66 +207,6 @@ function UserLocationMarker({ location }) {
     return () => map.removeLayer(marker);
   }, [location, map]);
   return null;
-}
-
-function MapSearchBar() {
-  const map = useMap();
-  const [query, setQuery] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [notFound, setNotFound] = useState(false);
-
-  const handleSearch = async () => {
-    if (!query.trim()) return;
-    setSearching(true);
-    setNotFound(false);
-    try {
-      const result = await geocodeAddress(query);
-      if (result) {
-        map.flyTo([result.lat, result.lng], 16, { duration: 0.8 });
-        setNotFound(false);
-      } else {
-        setNotFound(true);
-      }
-    } catch {
-      setNotFound(true);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') handleSearch();
-  };
-
-  return (
-    <div className="absolute top-4 right-4 z-[800] flex flex-col gap-2">
-      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 flex gap-2">
-        <FiSearch className="text-gray-400 self-center ml-1" size={16} />
-        <input
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setNotFound(false); }}
-          onKeyDown={handleKeyDown}
-          placeholder="Buscar dirección..."
-          className="px-2 py-1.5 border-0 outline-none text-sm w-56 focus:ring-0"
-        />
-        <button
-          onClick={handleSearch}
-          disabled={searching || !query.trim()}
-          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium disabled:opacity-50 transition-colors"
-        >
-          {searching ? '...' : 'Buscar'}
-        </button>
-      </div>
-      {notFound && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg shadow flex items-center gap-2">
-          <span>No se encontró la dirección</span>
-          <button onClick={() => setNotFound(false)} className="text-red-400 hover:text-red-600">
-            <FiX size={12} />
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }
 
 function RouteLayer({ routeResult }) {
@@ -1156,7 +1081,7 @@ export function Maps() {
         )}
       </div>
 
-      <div className="w-full md:w-2/3 h-1/2 md:h-full relative">
+      <div className="w-full md:w-2/3 h-1/2 md:h-full relative z-0">
         <MapContainer center={initialCenter} zoom={initialZoom} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -1165,7 +1090,6 @@ export function Maps() {
 
           <MapStatePersister onMapStateChange={handleMapStateChange} />
           <CheckinFlyTo selected={clienteSeleccionado} />
-          <MapSearchBar />
           <LocateControl onLocationFound={setUserLocation} />
           <UserLocationMarker location={userLocation} />
           <RouteLayer routeResult={routeResult} />

@@ -75,13 +75,15 @@ export function KPICard({
             <Typography variant="small" className="font-medium text-gray-500 mb-1">
               {title}
             </Typography>
-            <Typography variant="h4" className="font-bold text-gray-800">
+            <Typography variant="h4" className="font-bold text-gray-800 text-lg sm:text-2xl md:text-3xl">
               {formatValue(value, format)}
             </Typography>
           </div>
           {icon && (
-            <div className={`p-3 rounded-lg ${colorClasses[color] || colorClasses.blue}`}>
-              {icon}
+            <div className={`p-2 sm:p-3 rounded-lg ${colorClasses[color] || colorClasses.blue}`}>
+              <div className="w-4 h-4 sm:w-6 sm:h-6 [&>svg]:w-full [&>svg]:h-full">
+                {icon}
+              </div>
             </div>
           )}
         </div>

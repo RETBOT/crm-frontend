@@ -128,9 +128,9 @@ export function Profile() {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Mi Perfil</h1>
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2">Mi Perfil</h1>
         <p className="text-gray-600 mb-6">Gestiona tu informacion personal y seguridad</p>
 
         {error && (
@@ -141,11 +141,11 @@ export function Profile() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 border-b">
+        <div className="flex gap-1 mb-6 border-b overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-3 sm:px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? "border-blue-500 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700"
@@ -164,12 +164,12 @@ export function Profile() {
 
         {/* Tab: Mi Perfil */}
         {activeTab === "profile" && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-start gap-6 mb-6">
-              <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 mb-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl sm:text-2xl font-bold shadow-lg flex-shrink-0">
                 {getInitials(profile.display_name)}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 {editing ? (
                   <div className="space-y-3">
                     <div>
@@ -191,7 +191,7 @@ export function Profile() {
                         placeholder="Email"
                       />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         className="flex items-center gap-1 bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
                         onClick={handleSaveProfile}
@@ -211,10 +211,10 @@ export function Profile() {
                   </div>
                 ) : (
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-800">{profile.display_name}</h2>
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-800 truncate">{profile.display_name}</h2>
                     <p className="text-sm text-gray-500">@{profile.username}</p>
                     {profile.email && (
-                      <p className="text-sm text-gray-600 mt-1">{profile.email}</p>
+                      <p className="text-sm text-gray-600 mt-1 truncate">{profile.email}</p>
                     )}
                     <button
                       className="flex items-center gap-1 mt-3 text-blue-600 text-sm hover:text-blue-700"
@@ -227,7 +227,7 @@ export function Profile() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 border-t pt-4 sm:pt-6">
               <div>
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Informacion</h3>
                 <div className="space-y-3">
@@ -282,9 +282,9 @@ export function Profile() {
 
         {/* Tab: Seguridad */}
         {activeTab === "security" && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Cambiar contrasena</h3>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Cambiar contrasena</h3>
               <div className="space-y-4 max-w-md">
                 <div>
                   <label className="text-xs font-medium text-gray-600">Contrasena actual</label>
@@ -325,8 +325,8 @@ export function Profile() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Informacion de acceso</h3>
+            <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Informacion de acceso</h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <FiClock className="text-gray-400" />

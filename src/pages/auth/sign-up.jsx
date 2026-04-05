@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 
 export function SignUp() {
   return (
-    <section className="m-8 flex">
+    <section className="m-4 sm:m-8 flex">
             <div className="w-2/5 h-full hidden lg:block">
         <img
           src="/img/pattern.png"

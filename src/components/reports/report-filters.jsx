@@ -212,7 +212,7 @@ export function ReportFilters({
             label="Periodo"
             value={localFilters.datePreset || "this_month"}
             onChange={(val) => handlePresetChange(val)}
-            className="w-40"
+            className="w-full sm:w-40"
           >
             {DATE_PRESETS.map((preset) => (
               <Option key={preset.value} value={preset.value}>
@@ -229,14 +229,14 @@ export function ReportFilters({
               label="Fecha inicio"
               value={localFilters.startDate || ""}
               onChange={(e) => handleInputChange("startDate", e.target.value)}
-              className="w-36"
+              className="w-full sm:w-36"
             />
             <Input
               type="date"
               label="Fecha fin"
               value={localFilters.endDate || ""}
               onChange={(e) => handleInputChange("endDate", e.target.value)}
-              className="w-36"
+              className="w-full sm:w-36"
             />
           </>
         )}
@@ -251,7 +251,7 @@ export function ReportFilters({
           Filtros avanzados {showAdvanced ? "(−)" : "(+)"}
         </Button>
 
-        <div className="flex gap-2 ml-auto">
+        <div className="flex flex-wrap gap-2 ml-auto">
           <Button
             variant="outlined"
             size="sm"

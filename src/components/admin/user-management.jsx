@@ -58,8 +58,8 @@ export const UserManagement = ({ users = [], roles = [], branches = [], routes =
   };
 
   return (
-    <div className="flex gap-4 h-full">
-      <div className={selectedUser ? "w-2/3" : "w-full"}>
+    <div className="flex flex-col lg:flex-row gap-4 h-full">
+      <div className={selectedUser ? "w-full lg:w-2/3" : "w-full"}>
         {error && (
           <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
@@ -234,7 +234,7 @@ export const UserManagement = ({ users = [], roles = [], branches = [], routes =
       </div>
 
       {selectedUser && (
-        <div className="w-1/3">
+        <div className="w-full lg:w-1/3">
           <UserDetailPanel
             user={selectedUser}
             roles={roles}

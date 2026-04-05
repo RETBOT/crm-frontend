@@ -49,9 +49,9 @@ export function OpportunitiesReport({ data, filters }) {
   }, []);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Header con exportación */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <div>
           <Typography variant="h5" className="font-bold text-gray-800">
             Reporte de Oportunidades
@@ -68,7 +68,7 @@ export function OpportunitiesReport({ data, filters }) {
       </div>
 
       {/* KPIs Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <KPICard
           title="Total Oportunidades"
           value={summary.totalOpportunities || 0}
@@ -258,7 +258,7 @@ export function OpportunitiesReport({ data, filters }) {
       </div>
 
       {/* Footer */}
-      <div className="mt-6 text-right text-sm text-gray-500">
+      <div className="mt-6 text-center sm:text-right text-sm text-gray-500">
         Pipeline activo: ${(summary.pipelineAmount || 0).toLocaleString()} |{" "}
         Ganadas: ${(summary.wonAmount || 0).toLocaleString()} | Win rate:{" "}
         {(summary.winRate || 0).toFixed(1)}%

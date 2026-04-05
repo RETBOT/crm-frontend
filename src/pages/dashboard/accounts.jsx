@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiFileText, FiCalendar, FiDollarSign, FiCheckCircle, FiXCircle, FiPlus, FiMenu, FiChevronDown, FiChevronUp } from "react-icons/fi";
+import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiFileText, FiCalendar, FiDollarSign, FiCheckCircle, FiXCircle, FiPlus, FiMenu, FiChevronDown, FiChevronUp, FiEdit } from "react-icons/fi";
 import { getClientes, getContactos, getSucursales, getRutas, getPuestos, contactos_ABC, clientes_ABC } from "../../api/accounts";
 import { getOpportunitiesByCustomer } from "../../api/opportunities";
 import { ContactForm, CustomerForm, ActivityList, Notification } from "../../components/index";
@@ -679,8 +679,8 @@ export function Accounts() {
         <Notification message={notification.message} type={notification.type} onClose={closeNotification} />
       )}
 
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">Clientes</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Clientes</h1>
         {hasPermission("customers.create") && (
           <button
             className="flex items-center bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
@@ -729,8 +729,27 @@ export function Accounts() {
               >
                 <FiChevronDown size={24} className="transform rotate-90"/>
               </button>
-              <h2 className="text-xl font-bold flex-1 text-center">{selectedAccount.CLIENTEID} - {selectedAccount.NOMBRECLI}</h2>
-              <div className="w-6"></div>
+              <h2 className="text-base font-bold flex-1 text-center truncate px-2">{selectedAccount.CLIENTEID} - {selectedAccount.NOMBRECLI}</h2>
+              <div className="flex items-center gap-1">
+                {hasPermission("customers.update") && (
+                  <button
+                    className="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50"
+                    onClick={() => setEditingCustomer(selectedAccount)}
+                    title="Editar cliente"
+                  >
+                    <FiEdit size={18} />
+                  </button>
+                )}
+                {hasPermission("customers.delete") && (
+                  <button
+                    className="text-gray-500 hover:text-gray-700 p-1.5 rounded hover:bg-gray-100"
+                    onClick={() => handleDeleteCustomer(selectedAccount)}
+                    title="Inactivar cliente"
+                  >
+                    <FiXCircle size={18} />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex border-b overflow-x-auto">

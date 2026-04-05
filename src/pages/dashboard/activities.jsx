@@ -409,14 +409,15 @@ export function Activities() {
   const hasActiveFilters = filterType || filterCustomer || filterPriority || filterOwner || filterDueFrom || filterDueTo || sortBy !== "status";
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-3 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Actividades</h1>
-        <p className="text-gray-600 mb-6">
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-800 mb-1 sm:mb-2">Actividades</h1>
+        <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
           Gestion de tareas, llamadas, correos y reuniones relacionadas con clientes
         </p>
 
         {(showForm || editingActivity) && (
+          <div className="mb-4 sm:mb-6">
           <ActivityForm
             title={editingActivity ? "Editar Actividad" : "Nueva Actividad"}
             activityTypes={activityTypes}
@@ -434,12 +435,13 @@ export function Activities() {
               setFormContacts([]);
             }}
           />
+          </div>
         )}
 
-        <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
-          <div className="p-4 border-b">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-2 flex-1 max-w-md">
+        <div className="bg-white rounded-lg shadow overflow-hidden mb-4 sm:mb-6">
+          <div className="p-3 sm:p-4 border-b">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
@@ -452,7 +454,7 @@ export function Activities() {
                 </div>
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className={`p-2 border rounded-lg transition-colors relative ${showFilters ? 'bg-blue-50 border-blue-300 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                  className={`p-2 border rounded-lg transition-colors relative flex-shrink-0 ${showFilters ? 'bg-blue-50 border-blue-300 text-blue-600' : 'text-gray-500 hover:bg-gray-50'}`}
                   title="Filtros avanzados"
                 >
                   <FiFilter size={18} />
@@ -460,13 +462,21 @@ export function Activities() {
                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full" />
                   )}
                 </button>
+                {!showForm && !editingActivity && hasPermission("activities.create") && (
+                  <button
+                    className="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 whitespace-nowrap flex-shrink-0 text-sm"
+                    onClick={() => setShowForm(true)}
+                  >
+                    <FiPlus className="mr-1" /> Nueva
+                  </button>
+                )}
               </div>
 
-              <div className="flex items-center space-x-2 overflow-x-auto pb-2 md:pb-0">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                 {statusOptions.map((option) => (
                   <button
                     key={option}
-                    className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 ${
                       activeFilter === option
                         ? "bg-blue-600 text-white"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -477,15 +487,6 @@ export function Activities() {
                   </button>
                 ))}
               </div>
-
-              {!showForm && !editingActivity && hasPermission("activities.create") && (
-                <button
-                  className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 whitespace-nowrap"
-                  onClick={() => setShowForm(true)}
-                >
-                  <FiPlus className="mr-1" /> Nueva Actividad
-                </button>
-              )}
             </div>
 
             {showFilters && (
@@ -576,7 +577,7 @@ export function Activities() {
           </div>
 
           {error && !loading && (
-            <div className="m-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="m-3 sm:m-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
           )}
@@ -752,8 +753,8 @@ export function Activities() {
             onClick={() => { setShowDrawer(false); setSelectedActivity(null); }}
           />
           <div className="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-50 overflow-y-auto animate-slide-in-right">
-            <div className="sticky top-0 bg-white z-10 p-4 border-b flex justify-between items-center">
-              <h2 className="text-lg font-bold text-gray-800">Detalles de la Actividad</h2>
+            <div className="sticky top-0 bg-white z-10 p-3 sm:p-4 border-b flex justify-between items-center">
+              <h2 className="text-base sm:text-lg font-bold text-gray-800">Detalles de la Actividad</h2>
               <button
                 className="text-gray-500 hover:text-gray-700 p-1"
                 onClick={() => { setShowDrawer(false); setSelectedActivity(null); }}
@@ -762,7 +763,7 @@ export function Activities() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               <div>
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Informacion Principal</h3>
                 <div className="space-y-3">
@@ -786,7 +787,7 @@ export function Activities() {
 
               <div>
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Detalles</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm text-gray-500">Fecha</span>
                     <p className="font-medium">{formatDate(selectedActivity.DUE_AT)}</p>

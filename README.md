@@ -316,3 +316,9 @@ El output se genera en `dist/`.
 - Estado del mapa persistido en URL query params (`?lat=&lng=&z=&search=`)
 - El formulario de cliente/prospecto incluye mapa con geolocalización (Nominatim)
 - El campo ESTATUS se oculta al crear clientes/prospectos (siempre ACTIVO por defecto)
+- **Diseño 100% responsivo**: adaptable a móvil, tablet y desktop
+  - En móvil (< 768px): vista de cards verticales en listas, sidenav con info de usuario y cierre de sesión
+  - En tablet (768px-1280px): layouts intermedios con grids de 2 columnas
+  - En desktop (1280px+): vista completa con tablas y panel de usuario en navbar
+  - Tabs con scroll horizontal cuando no caben en pantalla
+  - Modales y dropdowns adaptados a pantallas pequeñas

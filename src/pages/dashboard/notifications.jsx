@@ -24,7 +24,7 @@ export function Notifications() {
   const alerts = ["gray", "green", "orange", "red"];
 
   return (
-    <div className="mx-auto my-20 flex max-w-screen-lg flex-col gap-8">
+    <div className="mx-auto my-8 sm:my-20 flex max-w-screen-lg flex-col gap-8 px-2">
       <Card>
         <CardHeader
           color="transparent"

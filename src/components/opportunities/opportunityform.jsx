@@ -234,7 +234,8 @@ export const OpportunityForm = ({
           )}
 
           {items.length > 0 && (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <div className="min-w-[600px]">
               <div className="grid grid-cols-12 gap-1 bg-gray-50 p-2 text-xs font-medium text-gray-600 border-b">
                 <div className="col-span-3">Producto</div>
                 <div className="col-span-4">Descripcion</div>
@@ -296,6 +297,7 @@ export const OpportunityForm = ({
                   ${items.reduce((sum, item) => sum + item.QUANTITY * item.UNIT_PRICE, 0).toFixed(2)}
                 </div>
                 <div className="col-span-1"></div>
+              </div>
               </div>
             </div>
           )}

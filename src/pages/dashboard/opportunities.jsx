@@ -3,7 +3,7 @@ import {
   FiSearch, FiUser, FiPhone, FiMail, FiFileText, FiCalendar,
   FiDollarSign, FiTrendingUp, FiCheckCircle, FiCheck, FiX, FiXCircle, FiPlus,
   FiChevronsLeft, FiChevronLeft, FiChevronRight, FiChevronsRight, FiFilter, FiTrash2,
-  FiArrowUp, FiArrowDown, FiMinus,
+  FiArrowUp, FiArrowDown, FiMinus, FiEdit2,
 } from "react-icons/fi";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import {
@@ -43,6 +43,13 @@ export function Opportunities() {
   const [opLoading, setOpLoading] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
   const [lostReason, setLostReason] = useState("");
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileView(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Phase 4: Filters & Pagination
   const [page, setPage] = useState(1);
@@ -310,14 +317,14 @@ export function Opportunities() {
   const endRow = Math.min(page * pageSize, totalRegs);
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-start mb-6">
+        <div className="flex flex-wrap justify-between items-start gap-3 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Oportunidades</h1>
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-800">Oportunidades</h1>
             <p className="text-gray-600">Seguimiento de oportunidades comerciales</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap gap-2">
             <button className={`px-4 py-2 rounded-lg text-sm ${viewMode === "list" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setViewMode("list")}>Lista</button>
             <button className={`px-4 py-2 rounded-lg text-sm ${viewMode === "kanban" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setViewMode("kanban")}>Kanban</button>
             {hasPermission("opportunities.create") && (
@@ -403,6 +410,38 @@ export function Opportunities() {
           <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>
         ) : viewMode === "list" ? (
           <div className="bg-white rounded-lg shadow overflow-hidden">
+            {isMobileView ? (
+              <div className="divide-y">
+                {opportunities.map((opp) => (
+                  <div
+                    key={opp.OPPORTUNITYID}
+                    className="p-4 hover:bg-blue-50 cursor-pointer"
+                    onClick={() => selectOpp(opp)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-base truncate">{opp.TITLE}</div>
+                        <div className="text-sm text-gray-500 mt-0.5">{opp.NOMBRECLI}</div>
+                        {opp.CONTACT_NAME && (
+                          <div className="text-xs text-gray-400 mt-0.5">{opp.CONTACT_NAME}</div>
+                        )}
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${statusStyles[opp.STATUS] || (stageMap[opp.STAGE_ID]?.color || "bg-gray-100")}`}>
+                        {opp.STATUS === "abierta" ? (stageMap[opp.STAGE_ID]?.NAME || opp.STAGE_NAME || "Abierta") : opp.STATUS === "ganada" ? "Ganada" : "Perdida"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mt-2 text-sm">
+                      <div className="font-bold text-blue-600">{formatAmount(opp.AMOUNT)}</div>
+                      <div className="text-gray-500">{formatDate(opp.CLOSE_DATE)}</div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-blue-600 h-2 rounded-full" style={{ width: `${opp.PROBABILITY || 0}%` }}></div></div>
+                      <span className="text-xs text-gray-500">{opp.PROBABILITY || 0}% prob.</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-100 text-left">
@@ -442,6 +481,7 @@ export function Opportunities() {
                 </tbody>
               </table>
             </div>
+            )}
             {totalRegs > 0 && (
               <div className="flex flex-col sm:flex-row justify-between items-center p-3 border-t gap-3">
                 <div className="flex items-center gap-3 text-sm text-gray-600">
@@ -467,23 +507,24 @@ export function Opportunities() {
           <div>
             <div className="text-xs text-gray-400 mb-2 text-center">Arrastra las tarjetas entre etapas para cambiar su estado</div>
             <DragDropContext onDragEnd={onDragEnd}>
-              <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: `repeat(${Math.max(openStageIds.length, 2)}, minmax(0, 1fr))` }}>
+              <div className="overflow-x-auto">
+                <div className="grid gap-3 sm:gap-4 mb-6" style={{ gridTemplateColumns: `repeat(${Math.max(openStageIds.length, 2)}, minmax(280px, 1fr))` }}>
                 {openStageIds.map((stageId) => {
                   const stage = stageMap[stageId];
                   return (
                     <Droppable key={stageId} droppableId={String(stageId)}>
                       {(provided) => (
-                        <div ref={provided.innerRef} {...provided.droppableProps} className="bg-gray-100 rounded-lg p-4">
+                        <div ref={provided.innerRef} {...provided.droppableProps} className="bg-gray-100 rounded-lg p-3 sm:p-4">
                           <div className="flex justify-between items-center mb-3">
                             <h3 className="font-medium text-sm">{stage.name}</h3>
                             <span className="bg-white px-2 py-1 rounded-full text-xs">{opportunitiesByStage[stageId]?.length || 0}</span>
                           </div>
-                          <div className="space-y-3 min-h-[100px]">
+                          <div className="space-y-2 sm:space-y-3 min-h-[100px]">
                             {(opportunitiesByStage[stageId] || []).map((opp, index) => (
                               <Draggable key={opp.OPPORTUNITYID} draggableId={String(opp.OPPORTUNITYID)} index={index}>
                                 {(provided) => (
                                   <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                                    className="bg-white p-3 rounded-lg shadow-sm hover:shadow-md cursor-pointer" onClick={() => selectOpp(opp)}>
+                                    className="bg-white p-2.5 sm:p-3 rounded-lg shadow-sm hover:shadow-md cursor-pointer" onClick={() => selectOpp(opp)}>
                                     <div className="font-medium text-sm mb-1">{opp.TITLE}</div>
                                     <div className="text-xs text-gray-500 mb-1">{opp.NOMBRECLI}</div>
                                     <div className="flex justify-between items-center">
@@ -503,23 +544,24 @@ export function Opportunities() {
                   );
                 })}
               </div>
+              </div>
             </DragDropContext>
           </div>
         )}
 
         {selectedOpp && !showForm && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-800">Detalle de Oportunidad</h2>
-              <button className="text-gray-500 hover:text-gray-700" onClick={() => setSelectedOpp(null)}>Cerrar</button>
+            <div className="p-4 sm:p-6 border-b flex justify-between items-center">
+              <h2 className="text-base sm:text-xl font-bold text-gray-800">Detalle de Oportunidad</h2>
+              <button className="text-gray-500 hover:text-gray-700 text-sm" onClick={() => setSelectedOpp(null)}>Cerrar</button>
             </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="p-4 sm:p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div className="md:col-span-2">
-                  <h3 className="text-lg font-semibold mb-2">{selectedOpp.TITLE}</h3>
-                  <p className="text-gray-600 mb-4">{selectedOpp.DESCRIPTION}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div><label className="block text-sm font-medium text-gray-500">Cliente</label><p className="mt-1 font-medium">{selectedOpp.NOMBRECLI}</p></div>
+                  <h3 className="text-base sm:text-lg font-semibold mb-2">{selectedOpp.TITLE}</h3>
+                  <p className="text-gray-600 mb-4 text-sm">{selectedOpp.DESCRIPTION}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <div><label className="block text-sm font-medium text-gray-500">Cliente</label><p className="mt-1 font-medium text-sm">{selectedOpp.NOMBRECLI}</p></div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Etapa</label>
                       <p className="mt-1">
@@ -528,19 +570,19 @@ export function Opportunities() {
                         </span>
                       </p>
                     </div>
-                    <div><label className="block text-sm font-medium text-gray-500">Valor Estimado</label><p className="mt-1 font-medium text-xl">{formatAmount(selectedOpp.AMOUNT)}</p></div>
-                    <div><label className="block text-sm font-medium text-gray-500">Fecha de Cierre</label><p className="mt-1 font-medium">{formatDate(selectedOpp.CLOSE_DATE)}</p></div>
-                    <div><label className="block text-sm font-medium text-gray-500">Ingreso Esperado</label><p className="mt-1 font-medium text-xl text-green-600">{formatAmount((selectedOpp.AMOUNT || 0) * (selectedOpp.PROBABILITY || 0) / 100)}</p></div>
-                    <div><label className="block text-sm font-medium text-gray-500">Responsable</label><p className="mt-1 font-medium">{selectedOpp.OWNER_NAME || "Sin asignar"}</p></div>
+                    <div><label className="block text-sm font-medium text-gray-500">Valor Estimado</label><p className="mt-1 font-medium text-lg sm:text-xl">{formatAmount(selectedOpp.AMOUNT)}</p></div>
+                    <div><label className="block text-sm font-medium text-gray-500">Fecha de Cierre</label><p className="mt-1 font-medium text-sm">{formatDate(selectedOpp.CLOSE_DATE)}</p></div>
+                    <div><label className="block text-sm font-medium text-gray-500">Ingreso Esperado</label><p className="mt-1 font-medium text-lg sm:text-xl text-green-600">{formatAmount((selectedOpp.AMOUNT || 0) * (selectedOpp.PROBABILITY || 0) / 100)}</p></div>
+                    <div><label className="block text-sm font-medium text-gray-500">Responsable</label><p className="mt-1 font-medium text-sm">{selectedOpp.OWNER_NAME || "Sin asignar"}</p></div>
                   </div>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium mb-3">Probabilidad</h4>
+                <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+                  <h4 className="font-medium mb-3 text-sm">Probabilidad</h4>
                   <div className="w-full bg-gray-200 rounded-full h-3 mb-2"><div className="bg-blue-600 h-3 rounded-full" style={{ width: `${selectedOpp.PROBABILITY || 0}%` }}></div></div>
-                  <div className="text-right text-lg font-bold">{selectedOpp.PROBABILITY || 0}%</div>
+                  <div className="text-right text-base sm:text-lg font-bold">{selectedOpp.PROBABILITY || 0}%</div>
                   {selectedOpp.STATUS !== "abierta" && (
                     <div className={`mt-4 p-3 rounded-lg ${selectedOpp.STATUS === "ganada" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                      <div className="flex items-center font-medium">
+                      <div className="flex items-center font-medium text-sm">
                         {selectedOpp.STATUS === "ganada" ? <><FiCheck className="mr-1" /> Ganada</> : <><FiX className="mr-1" /> Perdida</>}
                       </div>
                       {selectedOpp.LOST_REASON && <p className="text-sm mt-1">{selectedOpp.LOST_REASON}</p>}
@@ -569,7 +611,7 @@ export function Opportunities() {
                 </div>
               )}
 
-              <div className="flex justify-end space-x-3">
+              <div className="flex flex-wrap justify-end gap-2">
                 {selectedOpp.STATUS === "abierta" && (
                   <>
                     {hasPermission("opportunities.update") && (

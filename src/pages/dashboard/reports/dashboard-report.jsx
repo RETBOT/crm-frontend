@@ -46,9 +46,9 @@ export function DashboardReport({ data, filters }) {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Header con exportación */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <div>
           <Typography variant="h5" className="font-bold text-gray-800">
             Dashboard Ejecutivo

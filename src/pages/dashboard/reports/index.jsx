@@ -338,25 +338,25 @@ export function Reports() {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       {/* Notification */}
       {notification.show && (
-        <div className={`mb-4 p-4 rounded ${notification.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"} flex justify-between items-center`}>
+        <div className={`mb-4 p-4 rounded ${notification.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"} flex justify-between items-center flex-wrap gap-2`}>
           <span>{notification.message}</span>
           <button onClick={() => setNotification({ ...notification, show: false })} className="text-xs underline ml-2">×</button>
         </div>
       )}
 
       {/* Header */}
-      <div className="mb-6 flex justify-between items-start">
+      <div className="mb-6 flex flex-wrap justify-between items-start gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Reportes</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Reportes</h1>
           <p className="text-gray-600">
             Analiza el rendimiento de tu negocio con reportes detallados
           </p>
         </div>
         {hasPermission("reports.saved_views") && (
-          <div className="flex gap-2 relative">
+          <div className="flex flex-wrap gap-2 relative">
             {/* Load saved views dropdown */}
             <div className="relative">
               <button
@@ -369,7 +369,7 @@ export function Reports() {
                 )}
               </button>
               {showViewsDropdown && (
-                <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-50 min-w-64">
+                <div className="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-50 min-w-48 sm:min-w-64">
                   <div className="p-2 max-h-64 overflow-y-auto">
                     {savedViews.length === 0 ? (
                       <div className="px-3 py-4 text-center text-sm text-gray-500">
@@ -410,7 +410,7 @@ export function Reports() {
           </div>
         )}
         {hasPermission("reports.scheduled") && (
-          <div className="flex gap-2 relative">
+          <div className="flex flex-wrap gap-2 relative">
             {/* Scheduled reports list */}
             <button
               className="flex items-center gap-1 px-3 py-2 border rounded-lg text-sm hover:bg-gray-50"
@@ -439,7 +439,7 @@ export function Reports() {
       {/* Save View Modal */}
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">Guardar vista</h3>
               <button onClick={() => { setShowSaveModal(false); setViewName(""); }}>
@@ -545,7 +545,7 @@ export function Reports() {
       {/* Scheduled Reports List Modal */}
       {showScheduleList && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md lg:max-w-2xl p-4 sm:p-6 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">Reportes Programados</h3>
               <button onClick={() => setShowScheduleList(false)}>
@@ -560,24 +560,25 @@ export function Reports() {
                 <p className="text-sm text-gray-400 mt-1">Programa tu primer reporte automático</p>
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="text-left p-2">Reporte</th>
-                    <th className="text-left p-2">Frecuencia</th>
-                    <th className="text-left p-2">Destinatarios</th>
-                    <th className="text-left p-2">Próximo envío</th>
-                    <th className="text-center p-2">Estado</th>
-                    <th className="text-center p-2">Acciones</th>
+                    <th className="text-left p-2 whitespace-nowrap">Reporte</th>
+                    <th className="text-left p-2 whitespace-nowrap">Frecuencia</th>
+                    <th className="text-left p-2 whitespace-nowrap">Destinatarios</th>
+                    <th className="text-left p-2 whitespace-nowrap">Próximo envío</th>
+                    <th className="text-center p-2 whitespace-nowrap">Estado</th>
+                    <th className="text-center p-2 whitespace-nowrap">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {scheduledReports.map((s) => (
                     <tr key={s.scheduleId} className="border-t hover:bg-gray-50">
-                      <td className="p-2 font-medium">{s.reportType}</td>
-                      <td className="p-2">{formatFrequency(s.frequency)}</td>
-                      <td className="p-2 text-xs truncate max-w-[150px]" title={Array.isArray(s.recipients) ? s.recipients.join(", ") : s.recipients}>{Array.isArray(s.recipients) ? s.recipients.join(", ") : s.recipients}</td>
-                      <td className="p-2 text-xs">{formatNextRun(s.nextRunAt)}</td>
+                      <td className="p-2 font-medium whitespace-nowrap">{s.reportType}</td>
+                      <td className="p-2 whitespace-nowrap">{formatFrequency(s.frequency)}</td>
+                      <td className="p-2 text-xs truncate max-w-[120px] sm:max-w-[200px]" title={Array.isArray(s.recipients) ? s.recipients.join(", ") : s.recipients}>{Array.isArray(s.recipients) ? s.recipients.join(", ") : s.recipients}</td>
+                      <td className="p-2 text-xs whitespace-nowrap">{formatNextRun(s.nextRunAt)}</td>
                       <td className="p-2 text-center">
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox" className="sr-only peer" checked={s.isActive} onChange={() => handleToggleSchedule(s)} />
@@ -592,6 +593,7 @@ export function Reports() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

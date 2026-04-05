@@ -259,8 +259,8 @@ export function CheckinModal({ activity, customer, onClose, onConfirm, onComplet
             </div>
           ) : (
             <>
-              <div className="rounded-lg overflow-hidden border border-gray-200 mb-3 relative" style={{ height: '250px' }}>
-                <MapContainer center={centerPos} zoom={16} style={{ height: '100%', width: '100%' }}>
+              <div className="rounded-lg overflow-hidden border border-gray-200 mb-3 relative h-40 sm:h-[250px]">
+                <MapContainer center={centerPos} zoom={16} className="h-full w-full">
                   <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; OpenStreetMap'

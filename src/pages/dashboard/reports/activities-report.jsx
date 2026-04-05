@@ -61,9 +61,9 @@ export function ActivitiesReport({ data, filters }) {
   const sellerData = Object.values(sellerMap);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Header con exportación */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <div>
           <Typography variant="h5" className="font-bold text-gray-800">
             Reporte de Actividades
@@ -80,7 +80,7 @@ export function ActivitiesReport({ data, filters }) {
       </div>
 
       {/* KPIs Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <KPICard
           title="Total Actividades"
           value={summary.total || 0}
@@ -256,7 +256,7 @@ export function ActivitiesReport({ data, filters }) {
       )}
 
       {/* Footer */}
-      <div className="mt-6 text-right text-sm text-gray-500">
+      <div className="mt-6 text-center sm:text-right text-sm text-gray-500">
         Tasa de completado: {(summary.completionRate || 0).toFixed(1)}% |{" "}
         Vencidas: {summary.overdueCount || overdue.length}
       </div>

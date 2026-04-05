@@ -30,8 +30,8 @@ export function Configurator() {
 
   return (
     <aside
-      className={`fixed top-0 right-0 z-50 h-screen w-96 bg-white px-2.5 shadow-lg transition-transform duration-300 ${
-        openConfigurator ? "translate-x-0" : "translate-x-96"
+      className={`fixed top-0 right-0 z-50 h-screen w-full max-w-sm sm:max-w-md md:max-w-lg bg-white px-2.5 shadow-lg transition-transform duration-300 ${
+        openConfigurator ? "translate-x-0" : "translate-x-full"
       }`}
     >
       <div className="flex items-start justify-between px-6 pt-8 pb-6">

@@ -99,20 +99,20 @@ export function Admin() {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Administracion</h1>
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2">Administracion</h1>
         <p className="text-gray-600 mb-6">Gestion de usuarios, roles y permisos</p>
 
         {error && (
           <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
 
-        <div className="flex gap-1 mb-6 border-b">
+        <div className="flex gap-1 mb-6 border-b overflow-x-auto">
           {visibleTabs.map((tab) => (
             <button
               key={tab.id}
-              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-3 sm:px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? "border-blue-500 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700"

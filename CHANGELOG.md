@@ -30,6 +30,54 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ---
 
 ### Added
+- Diseño responsivo completo para todo el CRM, adaptable a cualquier dispositivo
+- Seccion de usuario (nombre + cerrar sesion) en el sidenav para pantallas < 1280px
+- Vista movil con cards en Clientes, Prospectos, Contactos, Oportunidades (modo lista) y Productos
+- Botones de editar e inactivar en el detalle movil de clientes y prospectos
+- Cierre automatico del panel de detalle al editar contacto o crear actividad
+- Filtros de actividades reorganizados en filas separadas para movil
+- Cards KPI responsivas en reportes (2 columnas en movil, 4 en desktop)
+- Iconos de KPI cards responsivos (mas pequenos en movil)
+- Tabs con scroll horizontal en admin, perfil y user-detail-panel
+- Modales y dropdowns responsivos en reportes y configurador
+
+### Changed
+- Sidenav ahora cierra al seleccionar una opcion en movil
+- Boton de usuario en navbar visible en todos los tamanos de pantalla
+- Padding, headings y espaciado responsivos en todas las paginas del dashboard
+- Kanban de oportunidades con scroll horizontal y columnas de minimo 280px
+- Grid de productos en formulario de oportunidades con scroll horizontal en movil
+- Vista de contactos en movil: cards verticales en lugar de tabla
+- Vista de oportunidades en movil: cards verticales en lugar de tabla
+- Vista de productos en movil: cards verticales en lugar de tabla
+- Panel de detalle de oportunidades con padding y textos responsivos
+- Perfil: avatar y layout adaptativo (vertical en movil, horizontal en desktop)
+- Mapa: contenedor con z-index controlado para no sobrepasar el sidenav
+- Mapa: z-index de controles ajustado para no interferir con el sidenav
+- Mapa: buscador de direccion eliminado (redundante con buscador de clientes)
+- Mapa: boton "Mi ubicacion" muestra solo icono en movil
+- Reportes: tabla de reportes programados con scroll horizontal
+- Reportes: botones de filtros con flex-wrap
+- Formularios de cliente: busqueda de direccion con layout responsivo (stack en movil)
+- Checkin-modal: mapa con altura responsiva
+
+### Fixed
+- Mapa se sobrepone al sidenav al abrir el menu en movil
+- Boton de cerrar sesion no visible en pantallas menores a 1280px
+- Configurator con ancho fijo que se desborda en pantallas pequenas
+- User-management layout con anchos fijos sin fallback movil
+- Kanban de oportunidades sin scroll horizontal en movil
+- Grid de 12 columnas en formulario de oportunidades aplasta inputs en movil
+- Boton de cerrar sidenav posicionado de forma fija que choca en pantallas pequenas
+- Filtros de actividades sin wrapping en movil
+- Tabs sin scroll horizontal en admin, perfil y user-detail-panel
+- Footers de reportes alineados a la derecha en movil
+- Dropdown de vistas guardadas demasiado ancho en pantallas pequenas
+- Padding excesivo en modales de reportes en movil
+
+---
+
+### Added
 - Check-in GPS con modal de mapa para completar Visita/Reunion
   - Marcador arrastrable con límite de 200m desde posición GPS inicial
   - Indicador de precisión GPS (verde <50m, amarillo 50-150m, ámbar >150m)

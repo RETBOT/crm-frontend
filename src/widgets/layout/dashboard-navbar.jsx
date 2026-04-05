@@ -154,7 +154,7 @@ export function DashboardNavbar() {
             </IconButton>
 
             {nOpen && (
-              <div className="absolute right-0 top-12 z-50 w-80 max-h-96 overflow-y-auto rounded-lg border bg-white shadow-xl">
+              <div className="absolute right-0 top-12 z-50 w-72 sm:w-80 max-h-96 overflow-y-auto rounded-lg border bg-white shadow-xl">
                 <div className="flex items-center justify-between border-b p-3">
                   <span className="text-sm font-semibold">Notificaciones</span>
                   {nCount > 0 && (

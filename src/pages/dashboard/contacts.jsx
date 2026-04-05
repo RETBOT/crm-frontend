@@ -8,6 +8,7 @@ import {
   FiTrash2,
   FiMessageSquare,
   FiCalendar,
+  FiChevronDown,
 } from "react-icons/fi";
 import { getClientes, getContactos, contactos_ABC, getPuestos } from "../../api/accounts";
 import { getTiposActividad, crearActividad } from "../../api/activities";
@@ -31,6 +32,13 @@ export function Contacts() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileView(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const showNotification = (message, type = "success") => {
     setNotification({ show: true, message, type });
@@ -229,6 +237,7 @@ export function Contacts() {
       showNotification("No cuenta con permisos para editar contactos", "error");
       return;
     }
+    setSelectedContact(null);
     setEditingContact(contact);
     setShowContactForm(true);
     setShowActivityForm(false);
@@ -236,6 +245,7 @@ export function Contacts() {
 
   const openCreateActivity = (contact) => {
     const customerId = contact.CLIENTEID || contact.customer_id;
+    setSelectedContact(null);
     setActivityContact(contact);
     setShowActivityForm(true);
     setShowContactForm(false);
@@ -252,9 +262,9 @@ export function Contacts() {
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Contactos</h1>
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2">Contactos</h1>
         <p className="text-gray-600 mb-6">Gestion de contactos por cliente</p>
 
         {notification.show && (
@@ -264,7 +274,7 @@ export function Contacts() {
         <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
           <div className="p-4 border-b flex flex-col md:flex-row md:items-center gap-3">
             <select
-              className="border rounded-lg p-2 text-sm flex-1 max-w-xs"
+              className="border rounded-lg p-2 text-sm flex-1 w-full md:max-w-xs"
               value={selectedCustomerId}
               onChange={(e) => setSelectedCustomerId(e.target.value)}
             >
@@ -372,6 +382,66 @@ export function Contacts() {
                   ? "Este cliente no tiene contactos registrados"
                   : "No hay contactos registrados"
                 : "No se encontraron contactos con ese filtro"}
+            </div>
+          ) : isMobileView ? (
+            <div className="divide-y">
+              {filteredContacts.map((contact) => (
+                <div
+                  key={contact.ID || contact.contact_id}
+                  className="p-4 hover:bg-blue-50 cursor-pointer"
+                  onClick={() => setSelectedContact(contact)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-base">
+                        {contact.NOMBRE} {contact.APATERNO} {contact.AMATERNO}
+                      </div>
+                      {contact.PUESTO && (
+                        <div className="text-sm text-gray-500 mt-0.5">{contact.PUESTO}</div>
+                      )}
+                      {!selectedCustomerId && contact.NOMBRECLI && (
+                        <div className="text-xs text-gray-400 mt-1">{contact.NOMBRECLI}</div>
+                      )}
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0 ml-2">
+                      {hasPermission("customers.update") && (
+                        <button
+                          className="p-2 rounded hover:bg-blue-100 text-blue-500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditContact(contact);
+                          }}
+                        >
+                          <FiEdit2 size={16} />
+                        </button>
+                      )}
+                      <button
+                        className="p-2 rounded hover:bg-green-100 text-green-500"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openCreateActivity(contact);
+                        }}
+                      >
+                        <FiCalendar size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-600">
+                    {contact.TELEFONO && (
+                      <div className="flex items-center gap-1">
+                        <FiPhone className="text-gray-400" size={14} />
+                        <span>{contact.TELEFONO}{contact.EXTENSION ? ` Ext.${contact.EXTENSION}` : ''}</span>
+                      </div>
+                    )}
+                    {contact.EMAIL && (
+                      <div className="flex items-center gap-1">
+                        <FiMail className="text-gray-400" size={14} />
+                        <span className="text-blue-600 truncate max-w-[180px]">{contact.EMAIL}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="overflow-x-auto">

@@ -301,12 +301,12 @@ export function Home() {
   const recentActivities = data?.recentActivities || [];
 
   return (
-    <div className="mt-12">
+    <div className="mt-8 sm:mt-12 px-2 sm:px-0">
       <div className="mb-8">
-        <Typography variant="h2" color="blue-gray" className="mb-2">
+        <Typography variant="h2" color="blue-gray" className="mb-2 text-xl sm:text-4xl">
           Panel de Control
         </Typography>
-        <Typography variant="lead" className="text-blue-gray-600">
+        <Typography variant="lead" className="text-blue-gray-600 text-sm sm:text-base">
           Resumen comercial y actividades recientes
         </Typography>
       </div>
@@ -322,7 +322,7 @@ export function Home() {
       {!loading && overdue.count > 0 && (
         <Card className="mb-6 border border-red-200 bg-red-50 shadow-sm">
           <CardBody className="p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-3 gap-2">
               <div className="flex items-center gap-2">
                 <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
                 <Typography variant="h6" color="red" className="font-bold">

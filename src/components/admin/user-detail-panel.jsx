@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FiKey, FiShield, FiMap, FiEdit2 } from "react-icons/fi";
-import { updateAdminUserRoles, updateAdminUserScope, resetAdminUserPassword, getAdminUserScope, updateAdminUser } from "../../api/admin";
+import { updateAdminUserRoles, updateAdminUserScope, resetAdminUserPassword, getAdminUserScope, updateAdminUser, sendAdminPasswordResetEmail } from "../../api/admin";
 
 export const UserDetailPanel = ({ user, roles = [], branches = [], routeOptions = [], onRefresh, onClose }) => {
   const [activeSection, setActiveSection] = useState("roles");
@@ -107,6 +107,22 @@ export const UserDetailPanel = ({ user, roles = [], branches = [], routeOptions 
       setNewPassword("");
     } catch (err) {
       setError(err.message || "Error al resetear contrasena");
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    if (!user.email) {
+      setError("El usuario no tiene un correo registrado");
+      return;
+    }
+    if (!window.confirm(`Se enviara un enlace de recuperacion a ${user.email}. Desea continuar?`)) return;
+    setError("");
+    setMessage("");
+    try {
+      const result = await sendAdminPasswordResetEmail(user.user_id);
+      setMessage(result.message || "Enlace enviado correctamente");
+    } catch (err) {
+      setError(err.message || "Error al enviar enlace de recuperacion");
     }
   };
 
@@ -255,23 +271,39 @@ export const UserDetailPanel = ({ user, roles = [], branches = [], routeOptions 
         )}
 
         {activeSection === "password" && (
-          <div>
-            <p className="text-sm text-gray-600 mb-3">Ingresa la nueva contrasena para {user.username}</p>
-            <div className="flex items-center gap-3 max-w-md">
-              <input
-                type="password"
-                className="border rounded p-2 flex-1"
-                placeholder="Nueva contrasena (minimo 6 caracteres)"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                minLength={6}
-              />
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-600 mb-3">Ingresa la nueva contrasena para {user.username}</p>
+              <div className="flex items-center gap-3 max-w-md">
+                <input
+                  type="password"
+                  className="border rounded p-2 flex-1"
+                  placeholder="Nueva contrasena (minimo 6 caracteres)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  minLength={6}
+                />
+                <button
+                  className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 disabled:opacity-50"
+                  onClick={handleResetPassword}
+                  disabled={!newPassword || newPassword.length < 6}
+                >
+                  Resetear
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <p className="text-sm text-gray-600 mb-2">O envia un enlace de recuperacion al correo</p>
+              <p className="text-xs text-gray-400 mb-3">
+                Correo registrado: {user.email || <span className="text-red-400">No registrado</span>}
+              </p>
               <button
-                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 disabled:opacity-50"
-                onClick={handleResetPassword}
-                disabled={!newPassword || newPassword.length < 6}
+                className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleSendResetEmail}
+                disabled={!user.email}
               >
-                Resetear
+                Enviar enlace al correo
               </button>
             </div>
           </div>

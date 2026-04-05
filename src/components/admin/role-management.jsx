@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { FiPlus, FiShield, FiTrash2, FiEdit2 } from "react-icons/fi";
+import { FiPlus, FiShield, FiTrash2 } from "react-icons/fi";
 import { createAdminRole, deleteAdminRole, updateAdminRolePermissions } from "../../api/admin";
+import { PERMISSION_GROUPS } from "../../utils/permissions-config";
 
 export const RoleManagement = ({ roles = [], permissions = [], onRefresh }) => {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -84,6 +85,37 @@ export const RoleManagement = ({ roles = [], permissions = [], onRefresh }) => {
     }
   };
 
+  const permMap = {};
+  permissions.forEach((p) => { permMap[p.permission_id] = p; permMap[p.permission_key] = p; });
+
+  const renderPermissionCheckboxes = (group, checkedKeys, onToggle) => {
+    const groupPerms = group.keys.map((key) => permMap[key]).filter(Boolean);
+    if (groupPerms.length === 0) return null;
+
+    return (
+      <div key={group.label} className="mb-4">
+        <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+          <span>{group.icon}</span>
+          {group.label}
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-1 ml-6">
+          {groupPerms.map((perm) => (
+            <label key={perm.permission_id} className="flex items-center gap-2 text-sm py-1 cursor-pointer hover:bg-gray-50 rounded px-2">
+              <input
+                type="checkbox"
+                checked={checkedKeys.includes(perm.permission_id)}
+                onChange={() => onToggle(perm.permission_id)}
+                className="accent-blue-600"
+              />
+              <span className="text-xs text-gray-500 font-mono">{perm.permission_key}</span>
+              <span className="text-xs text-gray-600">— {perm.permission_description}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {error && (
@@ -127,18 +159,9 @@ export const RoleManagement = ({ roles = [], permissions = [], onRefresh }) => {
                 onChange={(e) => setFormData((p) => ({ ...p, role_description: e.target.value }))}
               />
             </div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Permisos del rol</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
-              {permissions.map((perm) => (
-                <label key={perm.permission_id} className="border rounded p-2 flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={formData.permission_ids.includes(perm.permission_id)}
-                    onChange={() => togglePermOnForm(perm.permission_id)}
-                  />
-                  {perm.permission_description || perm.permission_key}
-                </label>
-              ))}
+            <p className="text-sm font-medium text-gray-700 mb-3">Permisos del rol</p>
+            <div className="max-h-96 overflow-y-auto pr-2 mb-4">
+              {PERMISSION_GROUPS.map((group) => renderPermissionCheckboxes(group, formData.permission_ids.map(id => permMap[id]?.permission_key).filter(Boolean), (id) => togglePermOnForm(id)))}
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" className="px-4 py-2 border rounded text-gray-700" onClick={() => setShowCreateForm(false)}>
@@ -154,7 +177,6 @@ export const RoleManagement = ({ roles = [], permissions = [], onRefresh }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {roles.map((role) => {
-          // El backend puede devolver permissions (array de strings) o permission_ids (array de IDs)
           const permCount = role.permissions?.length || role.permission_ids?.length || 0;
           const isSelected = selectedRole?.role_id === role.role_id;
           return (
@@ -199,17 +221,8 @@ export const RoleManagement = ({ roles = [], permissions = [], onRefresh }) => {
           <h3 className="text-lg font-semibold mb-3">
             Editar permisos: {selectedRole.role_name}
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
-            {permissions.map((perm) => (
-              <label key={perm.permission_id} className="border rounded p-2 flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selectedPermissionIds.includes(perm.permission_id)}
-                  onChange={() => togglePermOnRole(perm.permission_id)}
-                />
-                {perm.permission_description || perm.permission_key}
-              </label>
-            ))}
+          <div className="max-h-[500px] overflow-y-auto pr-2 mb-4">
+            {PERMISSION_GROUPS.map((group) => renderPermissionCheckboxes(group, selectedPermissionIds.map(id => permMap[id]?.permission_key).filter(Boolean), togglePermOnRole))}
           </div>
           <div className="flex justify-end gap-2">
             <button className="px-4 py-2 border rounded text-gray-700" onClick={() => setSelectedRole(null)}>

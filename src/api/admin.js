@@ -136,3 +136,9 @@ export const resetAdminUserPassword = async (userId, password) =>
     const response = await axios.put(`${url}admin/users/${userId}/password`, { password }, authHeader());
     return response.data;
   });
+
+export const sendAdminPasswordResetEmail = async (userId) =>
+  withRefresh(async () => {
+    const response = await axios.post(`${url}admin/users/${userId}/send-reset-email`, {}, authHeader());
+    return response.data;
+  });

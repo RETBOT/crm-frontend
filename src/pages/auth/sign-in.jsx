@@ -54,6 +54,12 @@ export function SignIn() {
       if (!usuario || !password) {
         throw new Error("Por favor, completa todos los campos");
       }
+      if (usuario.length > 50) {
+        throw new Error("El usuario no puede tener mas de 50 caracteres");
+      }
+      if (password.length > 100) {
+        throw new Error("La contraseña no puede tener mas de 100 caracteres");
+      }
       const response = await loginUser(usuario, password);
 
       if (!response) throw new Error("Token no recibido");
@@ -63,7 +69,7 @@ export function SignIn() {
         setLoading(false);
         return;
       } else {
-        login(response.data, password, recordarme);
+        login(response.data, recordarme);
         navigate(rutaServer + "/dashboard/home");
       }
     } catch (err) {

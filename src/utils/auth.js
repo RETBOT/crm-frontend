@@ -1,20 +1,22 @@
 import CryptoJS from "crypto-js";
 
 export const isAuthenticated = () => {
-  return !!localStorage.getItem("token");
+  const token = localStorage.getItem("token");
+  const expiresIn = localStorage.getItem("expiresIn");
+  if (!token || !expiresIn) return false;
+  return Date.now() < parseInt(expiresIn);
 };
 
-export const login = (data, pwds, recordarme) => {
+export const login = (data, recordarme) => {
 
   localStorage.setItem("usr", data.user_name);
-  localStorage.setItem("pwd", pwds);
-  localStorage.setItem("dsc", data.user_dsc); // Asumiendo que el nombre es el mismo que el usuario
+  localStorage.setItem("dsc", data.user_dsc);
   localStorage.setItem("idsuc", data.id_sucursal);
   localStorage.setItem("suc", data.sucursal);
   localStorage.setItem("msuc", data.multi_suc);
   localStorage.setItem("token", data.token);
   localStorage.setItem("permissions", JSON.stringify(Array.isArray(data.permissions) ? data.permissions : []));
-  localStorage.setItem("expiresIn", Date.now() + 3600000); // 1 hora
+  localStorage.setItem("expiresIn", Date.now() + 3600000);
 
   localStorage.setItem("recordarme", recordarme ? "true" : "false");
 }
@@ -26,7 +28,6 @@ export const logout = () => {
     localStorage.removeItem("usr");
     localStorage.removeItem("recordarme");
   }
-  localStorage.removeItem("pwd");
   localStorage.removeItem("dsc");
   localStorage.removeItem("idsuc");
   localStorage.removeItem("suc");
@@ -34,7 +35,6 @@ export const logout = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("permissions");
   localStorage.removeItem("expiresIn");
-  //localStorage.clear(); // Elimina todo el localStorage, incluidos datos sensibles
 };
 
 export const getPermissions = () => {
@@ -58,9 +58,10 @@ export const hasAnyPermission = (permissions = []) => {
 };
 
 export const encryptData = (data) => {
-  const secretKey = import.meta.env.VITE_SECRET_KEY; // Asegúrate de definir esta variable en tu .env
-  const key = CryptoJS.enc.Utf8.parse(secretKey); // Clave de 16 bytes
-  const iv = CryptoJS.enc.Utf8.parse(secretKey);  // IV de 16 bytes
+  const secretKey = import.meta.env.VITE_SECRET_KEY;
+  const hash = CryptoJS.SHA256(secretKey);
+  const key = CryptoJS.enc.Hex.parse(hash.toString().substring(0, 64));
+  const iv = CryptoJS.enc.Hex.parse(hash.toString().substring(64, 96));
   const encrypted = CryptoJS.AES.encrypt(data, key, {
     iv: iv,
     mode: CryptoJS.mode.CBC,

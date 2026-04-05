@@ -2,9 +2,9 @@ import axios from "axios";
 
 var url = import.meta.env.VITE_API_URL;
 import { refreshToken } from "./auth";
+import { logger } from "../utils/logger";
 
 export const getSucursales = async (DSC) => {
-  // Obtener el token
   const token = localStorage.getItem("token");
   const usr = localStorage.getItem("usr");
   try { 
@@ -23,28 +23,24 @@ export const getSucursales = async (DSC) => {
     const status = error?.response?.status;
 
     if (status === 401) {
-      console.log("Token expirado. Renovando...");
+      logger.debug("Token expirado. Renovando...");
       return await refreshToken(getSucursales, DSC);
     }
 
     if (status) {
       const msg = error.response.data?.message || "Error al obtener las sucursales";
-      console.error("Error:", msg);
       throw new Error(msg);
     }
 
     if (error.request) {
-      console.error("No hay respuesta del servidor:", error.request);
       throw new Error("No hay conexión con el servidor");
     }
 
-    console.error("Error desconocido:", error.message);
     throw new Error("Ocurrió un error inesperado");
   }
 };
 
 export const getRutas = async (DSC) => {
-  // Obtener el token
   const token = localStorage.getItem("token");
   const usr = localStorage.getItem("usr");
   try { 
@@ -63,29 +59,24 @@ export const getRutas = async (DSC) => {
     const status = error?.response?.status;
 
     if (status === 401) {
-      console.log("Token expirado. Renovando...");
+      logger.debug("Token expirado. Renovando...");
       return await refreshToken(getRutas, DSC);
     }
 
     if (status) {
       const msg = error.response.data?.message || "Error al obtener las rutas";
-      console.error("Error:", msg);
       throw new Error(msg);
     }
 
     if (error.request) {
-      console.error("No hay respuesta del servidor:", error.request);
       throw new Error("No hay conexión con el servidor");
     }
 
-    console.error("Error desconocido:", error.message);
     throw new Error("Ocurrió un error inesperado");
   }
 };
 
-// /** Clientes */
 export const getClientes = async (CLIENTEID, NOMBRECLI, SUCURSAL, ESTATUS, RUTA, PAGE, NUMCLI, TIPO) => {
-  // Obtener el token
   const token = localStorage.getItem("token");
   const CNUSERID = localStorage.getItem("usr");
   try { 
@@ -111,29 +102,24 @@ export const getClientes = async (CLIENTEID, NOMBRECLI, SUCURSAL, ESTATUS, RUTA,
     const status = error?.response?.status;
 
     if (status === 401) {
-      console.log("Token expirado. Renovando...");
+      logger.debug("Token expirado. Renovando...");
       return await refreshToken(getClientes, CLIENTEID, NOMBRECLI, SUCURSAL, ESTATUS, RUTA, PAGE, NUMCLI, TIPO);
     }
 
     if (status) {
       const msg = error.response.data?.message || "Error al obtener los clientes";
-      console.error("Error:", msg);
       throw new Error(msg);
     }
 
     if (error.request) {
-      console.error("No hay respuesta del servidor:", error.request);
       throw new Error("No hay conexión con el servidor");
     }
 
-    console.error("Error desconocido:", error.message);
     throw new Error("Ocurrió un error inesperado");
   }
 };
 
-// /** Clientes */
 export const getContactos = async (CLIENTEID) => {
-  // Obtener el token
   const token = localStorage.getItem("token");
   try { 
     const response = await axios.post(`${url}cn/contactos`, {
@@ -150,30 +136,25 @@ export const getContactos = async (CLIENTEID) => {
     const status = error?.response?.status;
 
     if (status === 401) {
-      console.log("Token expirado. Renovando...");
+      logger.debug("Token expirado. Renovando...");
       return await refreshToken(getContactos, CLIENTEID);
     }
 
     if (status) {
       const msg = error.response.data?.message || "Error al obtener los datos";
-      console.error("Error:", msg);
       throw new Error(msg);
     }
 
     if (error.request) {
-      console.error("No hay respuesta del servidor:", error.request);
       throw new Error("No hay conexión con el servidor");
     }
 
-    console.error("Error desconocido:", error.message);
     throw new Error("Ocurrió un error inesperado");
   }
 };
 
-// /** Clientes  ABC */ 
 export const contactos_ABC = async (CLIENTEID, CONTACTOID, NOMBRE, APATERNO, AMATERNO, TELEFONO, EXTENSION, PUESTOID, COMENTARIOS, WHATSAPP, EMAIL, TIPO) => {
 
-  // Obtener el token
   const token = localStorage.getItem("token");
   try { 
     const response = await axios.post(`${url}cn/contactos_abc`, {
@@ -201,22 +182,19 @@ export const contactos_ABC = async (CLIENTEID, CONTACTOID, NOMBRE, APATERNO, AMA
     const status = error?.response?.status;
 
     if (status === 401) {
-      console.log("Token expirado. Renovando...");
+      logger.debug("Token expirado. Renovando...");
       return await refreshToken(contactos_ABC, CLIENTEID, CONTACTOID, NOMBRE, APATERNO, AMATERNO, TELEFONO, EXTENSION, PUESTOID, COMENTARIOS, WHATSAPP, EMAIL, TIPO);
     }
 
     if (status) {
       const msg = error.response.data?.message || "Error al obtener los datos";
-      console.error("Error:", msg);
       throw new Error(msg);
     }
 
     if (error.request) {
-      console.error("No hay respuesta del servidor:", error.request);
       throw new Error("No hay conexión con el servidor");
     }
 
-    console.error("Error desconocido:", error.message);
     throw new Error("Ocurrió un error inesperado");
   }
 };

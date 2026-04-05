@@ -7,6 +7,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Opcion de exportacion a CSV en el dropdown de Exportar en reportes
+- Icono FiTable para la opcion de exportacion a CSV
+
+### Changed
+- ExportButton ahora soporta 3 formatos: Excel, PDF y CSV
+- Mensajes de notificacion de exportacion usan etiquetas legibles (Excel, PDF, CSV)
+- Manejo de MIME types y extensiones refactorizado con diccionarios
+
+---
+
+### Added
 - Check-in GPS con modal de mapa para completar Visita/Reunion
   - Marcador arrastrable con límite de 200m desde posición GPS inicial
   - Indicador de precisión GPS (verde <50m, amarillo 50-150m, ámbar >150m)

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FiDownload, FiFile, FiFileText, FiChevronDown } from "react-icons/fi";
+import { FiDownload, FiFile, FiFileText, FiChevronDown, FiTable } from "react-icons/fi";
 import { Button, Menu, MenuHandler, MenuList, MenuItem } from "@material-tailwind/react";
 import { exportReport } from "../../api/reports";
 import { Notification } from "../notifications/notification";
@@ -30,25 +30,25 @@ export function ExportButton({
     try {
       const data = await exportReport(reportType, format, filters);
 
-      // Crear blob y descargar
-      const blob = new Blob([data], {
-        type:
-          format === "excel"
-            ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            : "application/pdf",
-      });
+      const mimeTypes = {
+        excel: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        pdf: "application/pdf",
+        csv: "text/csv",
+      };
+      const extensions = { excel: "xlsx", pdf: "pdf", csv: "csv" };
+
+      const blob = new Blob([data], { type: mimeTypes[format] });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${filename}_${new Date().toISOString().split("T")[0]}.${
-        format === "excel" ? "xlsx" : "pdf"
-      }`;
+      link.download = `${filename}_${new Date().toISOString().split("T")[0]}.${extensions[format]}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      showNotification(`Reporte exportado correctamente en formato ${format}`);
+      const formatLabels = { excel: "Excel", pdf: "PDF", csv: "CSV" };
+      showNotification(`Reporte exportado correctamente en formato ${formatLabels[format]}`);
       if (onExportComplete) onExportComplete({ success: true, format });
     } catch (error) {
       console.error("Error al exportar:", error);
@@ -90,6 +90,14 @@ export function ExportButton({
           >
             <FiFileText className="w-4 h-4 text-red-600" />
             Exportar a PDF
+          </MenuItem>
+          <MenuItem
+            className="flex items-center gap-2"
+            onClick={() => handleExport("csv")}
+            disabled={loading}
+          >
+            <FiTable className="w-4 h-4 text-blue-600" />
+            Exportar a CSV
           </MenuItem>
         </MenuList>
       </Menu>

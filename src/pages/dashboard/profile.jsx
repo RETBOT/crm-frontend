@@ -109,7 +109,6 @@ export function Profile() {
   const tabs = [
     { id: "profile", label: "Mi Perfil", icon: <FiUser /> },
     { id: "security", label: "Seguridad", icon: <FiLock /> },
-    { id: "permissions", label: "Mis Permisos", icon: <FiShield /> },
   ];
 
   if (loading) {
@@ -348,7 +347,7 @@ export function Profile() {
           </div>
         )}
 
-        {/* Tab: Mis Permisos */}
+        {/* Tab: Mis Permisos - Oculto temporalmente */}
         {activeTab === "permissions" && (
           <div className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">

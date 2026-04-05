@@ -45,7 +45,8 @@ src/
 │   ├── opportunities.js        # Pipeline de oportunidades
 │   ├── products.js             # Catálogo de productos
 │   ├── reports.js              # Reportes y exportación
-│   └── notifications.js        # Notificaciones del sistema
+│   ├── notifications.js        # Notificaciones del sistema
+│   └── profile.js              # Perfil personal
 ├── components/
 │   ├── accounts/               # Formularios y listas de clientes/prospectos
 │   │   ├── activityform.jsx    # Formulario de actividad por cliente
@@ -111,7 +112,8 @@ src/
 │   ├── cards/                  # Tarjetas de estadísticas
 │   └── charts/                 # Gráficos estadísticos
 └── utils/
-    └── auth.js                 # Utilidades de autenticación y permisos
+    ├── auth.js                 # Utilidades de autenticación y permisos
+    └── permissions-config.js   # Grupos de permisos compartidos (categorias)
 ```
 
 ## Funcionalidades principales
@@ -192,10 +194,20 @@ src/
 
 ### Administración
 - Crear/eliminar usuarios
+- Editar usuarios (nombre, email, sucursal, estado activo)
 - Asignar roles a usuarios
+- Enviar enlace de recuperación de contraseña por email
+- Resetear contraseña manualmente
 - Crear/eliminar roles
-- Asignar permisos a roles (con descripción y ubicación)
+- Asignar permisos a roles (agrupados por categoría: Usuarios, Clientes, Prospectos, etc.)
 - Configurar alcance de datos (ALL/BRANCH/ROUTE) por usuario
+- `is_multi_branch` se detecta automáticamente al seleccionar 2+ sucursales
+
+### Perfil Personal
+- Ver información propia (nombre, email, sucursal, roles, último acceso)
+- Editar nombre y email
+- Cambiar contraseña (valida la actual)
+- Ver permisos asignados (agrupados por categoría)
 
 ## Sistema de permisos
 
@@ -279,6 +291,7 @@ Los permisos controlan acceso a funcionalidades. Solo el desarrollador crea perm
 | `/dashboard/opportunities` | Opportunities | Auth |
 | `/dashboard/products` | Products | Auth |
 | `/dashboard/reports` | Reports | `reports.view` |
+| `/dashboard/profile` | Profile | Auth |
 | `/dashboard/admin` | Admin | `users.manage`, `roles.manage`, `scope.manage` |
 
 ## Build

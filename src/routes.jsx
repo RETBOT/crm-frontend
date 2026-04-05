@@ -10,7 +10,7 @@ import {
   CubeIcon,
 
 } from "@heroicons/react/24/solid";
-import { Home, Accounts, Prospects, Activities, Contacts, Opportunities, Reports, Maps, Admin, Products } from "@/pages/dashboard";
+import { Home, Accounts, Prospects, Activities, Contacts, Opportunities, Reports, Maps, Admin, Products, Profile } from "@/pages/dashboard";
 import { SignIn, SignUp, ForgotPassword, ResetPassword } from "@/pages/auth";
 
 
@@ -84,6 +84,13 @@ export const rSidenavoutes = [
         path: "/reports",
         element: <Reports />,
         requiredPermissions: ["reports.view"],
+      },
+      // profile
+      {
+        icon: <UserCircleIcon {...icon} />,
+        name: "Mi Perfil",
+        path: "/profile",
+        element: <Profile />,
       },
       {
         icon: <Cog6ToothIcon {...icon} />,
@@ -169,12 +176,12 @@ export const routes = [
         element: <Admin />,
         requiredPermissions: ["users.manage", "roles.manage", "scope.manage"],
       },
-      // {
-      //   icon: <UserCircleIcon {...icon} />,
-      //   name: "profile",
-      //   path: "/profile",
-      //   element: <Profile />,
-      // },
+      {
+        icon: <UserCircleIcon {...icon} />,
+        name: "profile",
+        path: "/profile",
+        element: <Profile />,
+      },
       // {
       //   icon: <TableCellsIcon {...icon} />,
       //   name: "tables",

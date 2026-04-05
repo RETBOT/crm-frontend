@@ -1,220 +1,393 @@
-import {
-  Card,
-  CardBody,
-  CardHeader,
-  CardFooter,
-  Avatar,
-  Typography,
-  Tabs,
-  TabsHeader,
-  Tab,
-  Switch,
-  Tooltip,
-  Button,
-} from "@material-tailwind/react";
-import {
-  HomeIcon,
-  ChatBubbleLeftEllipsisIcon,
-  Cog6ToothIcon,
-  PencilIcon,
-} from "@heroicons/react/24/solid";
-import { Link } from "react-router-dom";
-import { ProfileInfoCard, MessageCard } from "@/widgets/cards";
-import { platformSettingsData, conversationsData, projectsData } from "@/data";
+import React, { useEffect, useState } from "react";
+import { FiUser, FiShield, FiLock, FiEdit2, FiSave, FiX, FiCheck, FiClock, FiMapPin } from "react-icons/fi";
+import { getMyProfile, updateMyProfile, changeMyPassword } from "../../api/profile";
+import { PERMISSION_GROUPS } from "../../utils/permissions-config";
+import { Notification } from "../../components/notifications/notification";
 
 export function Profile() {
-  return (
-    <>
-      <div className="relative mt-8 h-72 w-full overflow-hidden rounded-xl bg-[url('/img/background-image.png')] bg-cover	bg-center">
-        <div className="absolute inset-0 h-full w-full bg-gray-900/75" />
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [activeTab, setActiveTab] = useState("profile");
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ display_name: "", email: "" });
+  const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
+
+  const showNotification = (msg, type = "success") => {
+    setNotification({ show: true, message: msg, type });
+    setTimeout(() => setNotification((n) => ({ ...n, show: false })), 3000);
+  };
+
+  const loadProfile = async () => {
+    setLoading(true);
+    try {
+      const data = await getMyProfile();
+      setProfile(data);
+      setEditForm({ display_name: data.display_name || "", email: data.email || "" });
+    } catch (err) {
+      setError(err.message || "Error al cargar perfil");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const handleSaveProfile = async () => {
+    setError("");
+    setMessage("");
+    if (!editForm.display_name || editForm.display_name.length < 3) {
+      setError("El nombre debe tener al menos 3 caracteres");
+      return;
+    }
+    try {
+      await updateMyProfile(editForm);
+      setMessage("Perfil actualizado correctamente");
+      setEditing(false);
+      showNotification("Perfil actualizado correctamente");
+      await loadProfile();
+    } catch (err) {
+      setError(err.message || "Error al actualizar perfil");
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setError("");
+    setMessage("");
+    if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
+      setError("Todos los campos son requeridos");
+      return;
+    }
+    if (passwordForm.new.length < 6) {
+      setError("La nueva contrasena debe tener al menos 6 caracteres");
+      return;
+    }
+    if (passwordForm.new !== passwordForm.confirm) {
+      setError("Las contrasenas no coinciden");
+      return;
+    }
+    try {
+      await changeMyPassword(passwordForm.current, passwordForm.new);
+      setMessage("Contrasena actualizada correctamente");
+      setPasswordForm({ current: "", new: "", confirm: "" });
+      showNotification("Contrasena actualizada correctamente");
+    } catch (err) {
+      setError(err.message || "Error al cambiar contrasena");
+    }
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "?";
+    return name
+      .split(" ")
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "Nunca";
+    return new Date(dateStr).toLocaleDateString("es-MX", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const permMap = {};
+  if (profile?.permissions) {
+    profile.permissions.forEach((key) => { permMap[key] = key; });
+  }
+
+  const tabs = [
+    { id: "profile", label: "Mi Perfil", icon: <FiUser /> },
+    { id: "security", label: "Seguridad", icon: <FiLock /> },
+    { id: "permissions", label: "Mis Permisos", icon: <FiShield /> },
+  ];
+
+  if (loading) {
+    return (
+      <div className="p-6 flex justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
-      <Card className="mx-3 -mt-16 mb-6 lg:mx-4 border border-blue-gray-100">
-        <CardBody className="p-4">
-          <div className="mb-10 flex items-center justify-between flex-wrap gap-6">
-            <div className="flex items-center gap-6">
-              <Avatar
-                src="/img/bruce-mars.jpeg"
-                alt="bruce-mars"
-                size="xl"
-                variant="rounded"
-                className="rounded-lg shadow-lg shadow-blue-gray-500/40"
-              />
-              <div>
-                <Typography variant="h5" color="blue-gray" className="mb-1">
-                  Richard Davis
-                </Typography>
-                <Typography
-                  variant="small"
-                  className="font-normal text-blue-gray-600"
-                >
-                  CEO / Co-Founder
-                </Typography>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        {error || "No se pudo cargar el perfil"}
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Mi Perfil</h1>
+        <p className="text-gray-600 mb-6">Gestiona tu informacion personal y seguridad</p>
+
+        {error && (
+          <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        )}
+        {message && (
+          <div className="mb-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">{message}</div>
+        )}
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-6 border-b">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setError("");
+                setMessage("");
+              }}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab: Mi Perfil */}
+        {activeTab === "profile" && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-start gap-6 mb-6">
+              <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                {getInitials(profile.display_name)}
               </div>
-            </div>
-            <div className="w-96">
-              <Tabs value="app">
-                <TabsHeader>
-                  <Tab value="app">
-                    <HomeIcon className="-mt-1 mr-2 inline-block h-5 w-5" />
-                    App
-                  </Tab>
-                  <Tab value="message">
-                    <ChatBubbleLeftEllipsisIcon className="-mt-0.5 mr-2 inline-block h-5 w-5" />
-                    Message
-                  </Tab>
-                  <Tab value="settings">
-                    <Cog6ToothIcon className="-mt-1 mr-2 inline-block h-5 w-5" />
-                    Settings
-                  </Tab>
-                </TabsHeader>
-              </Tabs>
-            </div>
-          </div>
-          <div className="gird-cols-1 mb-12 grid gap-12 px-4 lg:grid-cols-2 xl:grid-cols-3">
-            <div>
-              <Typography variant="h6" color="blue-gray" className="mb-3">
-                Platform Settings
-              </Typography>
-              <div className="flex flex-col gap-12">
-                {platformSettingsData.map(({ title, options }) => (
-                  <div key={title}>
-                    <Typography className="mb-4 block text-xs font-semibold uppercase text-blue-gray-500">
-                      {title}
-                    </Typography>
-                    <div className="flex flex-col gap-6">
-                      {options.map(({ checked, label }) => (
-                        <Switch
-                          key={label}
-                          id={label}
-                          label={label}
-                          defaultChecked={checked}
-                          labelProps={{
-                            className: "text-sm font-normal text-blue-gray-500",
-                          }}
-                        />
-                      ))}
+              <div className="flex-1">
+                {editing ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Nombre completo</label>
+                      <input
+                        className="border rounded p-2 w-full text-sm"
+                        value={editForm.display_name}
+                        onChange={(e) => setEditForm((p) => ({ ...p, display_name: e.target.value }))}
+                        placeholder="Nombre completo"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Email</label>
+                      <input
+                        className="border rounded p-2 w-full text-sm"
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                        placeholder="Email"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        className="flex items-center gap-1 bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                        onClick={handleSaveProfile}
+                      >
+                        <FiSave size={14} /> Guardar
+                      </button>
+                      <button
+                        className="flex items-center gap-1 border px-4 py-2 rounded text-sm text-gray-600 hover:bg-gray-50"
+                        onClick={() => {
+                          setEditing(false);
+                          setEditForm({ display_name: profile.display_name || "", email: profile.email || "" });
+                        }}
+                      >
+                        <FiX size={14} /> Cancelar
+                      </button>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-800">{profile.display_name}</h2>
+                    <p className="text-sm text-gray-500">@{profile.username}</p>
+                    {profile.email && (
+                      <p className="text-sm text-gray-600 mt-1">{profile.email}</p>
+                    )}
+                    <button
+                      className="flex items-center gap-1 mt-3 text-blue-600 text-sm hover:text-blue-700"
+                      onClick={() => setEditing(true)}
+                    >
+                      <FiEdit2 size={14} /> Editar perfil
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-            <ProfileInfoCard
-              title="Profile Information"
-              description="Hi, I'm Alec Thompson, Decisions: If you can't decide, the answer is no. If two equally difficult paths, choose the one more painful in the short term (pain avoidance is creating an illusion of equality)."
-              details={{
-                "first name": "Alec M. Thompson",
-                mobile: "(44) 123 1234 123",
-                email: "alecthompson@mail.com",
-                location: "USA",
-                social: (
-                  <div className="flex items-center gap-4">
-                    <i className="fa-brands fa-facebook text-blue-700" />
-                    <i className="fa-brands fa-twitter text-blue-400" />
-                    <i className="fa-brands fa-instagram text-purple-500" />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Informacion</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <FiMapPin className="text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Sucursal</p>
+                      <p className="text-sm text-gray-800">
+                        {profile.branch_name || "Sin sucursal asignada"}
+                      </p>
+                    </div>
                   </div>
-                ),
-              }}
-              action={
-                <Tooltip content="Edit Profile">
-                  <PencilIcon className="h-4 w-4 cursor-pointer text-blue-gray-500" />
-                </Tooltip>
-              }
-            />
-            <div>
-              <Typography variant="h6" color="blue-gray" className="mb-3">
-                Platform Settings
-              </Typography>
-              <ul className="flex flex-col gap-6">
-                {conversationsData.map((props) => (
-                  <MessageCard
-                    key={props.name}
-                    {...props}
-                    action={
-                      <Button variant="text" size="sm">
-                        reply
-                      </Button>
-                    }
+                  <div className="flex items-center gap-3">
+                    <FiCheck className="text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Multi-sucursal</p>
+                      <p className="text-sm text-gray-800">
+                        {profile.is_multi_branch ? "Si" : "No"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <FiClock className="text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Ultimo acceso</p>
+                      <p className="text-sm text-gray-800">{formatDate(profile.last_login_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Roles asignados</h3>
+                {profile.roles && profile.roles.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {profile.roles.map((role) => (
+                      <span
+                        key={role.role_id}
+                        className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-medium"
+                      >
+                        {role.role_name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">Sin roles asignados</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Seguridad */}
+        {activeTab === "security" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Cambiar contrasena</h3>
+              <div className="space-y-4 max-w-md">
+                <div>
+                  <label className="text-xs font-medium text-gray-600">Contrasena actual</label>
+                  <input
+                    className="border rounded p-2 w-full text-sm"
+                    type="password"
+                    value={passwordForm.current}
+                    onChange={(e) => setPasswordForm((p) => ({ ...p, current: e.target.value }))}
+                    placeholder="Ingresa tu contrasena actual"
                   />
-                ))}
-              </ul>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600">Nueva contrasena</label>
+                  <input
+                    className="border rounded p-2 w-full text-sm"
+                    type="password"
+                    value={passwordForm.new}
+                    onChange={(e) => setPasswordForm((p) => ({ ...p, new: e.target.value }))}
+                    placeholder="Minimo 6 caracteres"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600">Confirmar nueva contrasena</label>
+                  <input
+                    className="border rounded p-2 w-full text-sm"
+                    type="password"
+                    value={passwordForm.confirm}
+                    onChange={(e) => setPasswordForm((p) => ({ ...p, confirm: e.target.value }))}
+                    placeholder="Repite la nueva contrasena"
+                  />
+                </div>
+                <button
+                  className="bg-blue-600 text-white px-6 py-2 rounded text-sm hover:bg-blue-700"
+                  onClick={handleChangePassword}
+                >
+                  Cambiar contrasena
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Informacion de acceso</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <FiClock className="text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">Ultimo acceso</p>
+                    <p className="text-sm text-gray-800">{formatDate(profile.last_login_at)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <FiUser className="text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">Usuario</p>
+                    <p className="text-sm text-gray-800 font-mono">@{profile.username}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="px-4 pb-4">
-            <Typography variant="h6" color="blue-gray" className="mb-2">
-              Projects
-            </Typography>
-            <Typography
-              variant="small"
-              className="font-normal text-blue-gray-500"
-            >
-              Architects design houses
-            </Typography>
-            <div className="mt-6 grid grid-cols-1 gap-12 md:grid-cols-2 xl:grid-cols-4">
-              {projectsData.map(
-                ({ img, title, description, tag, route, members }) => (
-                  <Card key={title} color="transparent" shadow={false}>
-                    <CardHeader
-                      floated={false}
-                      color="gray"
-                      className="mx-0 mt-0 mb-4 h-64 xl:h-40"
-                    >
-                      <img
-                        src={img}
-                        alt={title}
-                        className="h-full w-full object-cover"
-                      />
-                    </CardHeader>
-                    <CardBody className="py-0 px-1">
-                      <Typography
-                        variant="small"
-                        className="font-normal text-blue-gray-500"
-                      >
-                        {tag}
-                      </Typography>
-                      <Typography
-                        variant="h5"
-                        color="blue-gray"
-                        className="mt-1 mb-2"
-                      >
-                        {title}
-                      </Typography>
-                      <Typography
-                        variant="small"
-                        className="font-normal text-blue-gray-500"
-                      >
-                        {description}
-                      </Typography>
-                    </CardBody>
-                    <CardFooter className="mt-6 flex items-center justify-between py-0 px-1">
-                      <Link to={route}>
-                        <Button variant="outlined" size="sm">
-                          view project
-                        </Button>
-                      </Link>
-                      <div>
-                        {members.map(({ img, name }, key) => (
-                          <Tooltip key={name} content={name}>
-                            <Avatar
-                              src={img}
-                              alt={name}
-                              size="xs"
-                              variant="circular"
-                              className={`cursor-pointer border-2 border-white ${
-                                key === 0 ? "" : "-ml-2.5"
-                              }`}
-                            />
-                          </Tooltip>
-                        ))}
+        )}
+
+        {/* Tab: Mis Permisos */}
+        {activeTab === "permissions" && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+              Estos son los permisos que tienes asignados a traves de tus roles.
+            </div>
+
+            {PERMISSION_GROUPS.map((group) => {
+              const groupPerms = group.keys.filter((key) => permMap[key]);
+              if (groupPerms.length === 0) return null;
+
+              return (
+                <div key={group.label} className="bg-white rounded-lg shadow p-4">
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <span>{group.icon}</span>
+                    {group.label}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {groupPerms.map((key) => (
+                      <div key={key} className="flex items-center gap-2 text-sm py-1 px-2 bg-green-50 rounded">
+                        <FiCheck className="text-green-600 flex-shrink-0" size={14} />
+                        <span className="text-xs text-gray-500 font-mono">{key}</span>
                       </div>
-                    </CardFooter>
-                  </Card>
-                )
-              )}
-            </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </CardBody>
-      </Card>
-    </>
+        )}
+      </div>
+
+      {notification.show && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification((n) => ({ ...n, show: false }))}
+        />
+      )}
+    </div>
   );
 }
 

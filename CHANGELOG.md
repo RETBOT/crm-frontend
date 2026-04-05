@@ -12,6 +12,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Tab "Editar" en panel de detalle de usuario para modificar nombre, email, sucursal, estado activo y multi-sucursal
 - Columna "Último acceso" en tabla de usuarios del admin
 - Confirmacion al desactivar un usuario desde el panel de edicion
+- Pagina de perfil personal con 3 tabs: Mi Perfil, Seguridad, Mis Permisos
+- Funciones API: getMyProfile, updateMyProfile, changeMyPassword
+- Utilidad compartida PERMISSION_GROUPS en utils/permissions-config.js
 
 ### Changed
 - `is_multi_branch` se detecta automaticamente al seleccionar 2+ sucursales en el alcance (ya no es checkbox manual)

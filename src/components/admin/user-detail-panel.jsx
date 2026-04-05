@@ -1,18 +1,25 @@
 import React, { useEffect, useState } from "react";
-import { FiKey, FiShield, FiMap } from "react-icons/fi";
-import { updateAdminUserRoles, updateAdminUserScope, resetAdminUserPassword, getAdminUserScope } from "../../api/admin";
+import { FiKey, FiShield, FiMap, FiEdit2 } from "react-icons/fi";
+import { updateAdminUserRoles, updateAdminUserScope, resetAdminUserPassword, getAdminUserScope, updateAdminUser } from "../../api/admin";
 
 export const UserDetailPanel = ({ user, roles = [], branches = [], routeOptions = [], onRefresh, onClose }) => {
   const [activeSection, setActiveSection] = useState("roles");
   const [selectedRoleIds, setSelectedRoleIds] = useState([]);
   const [scopeConfig, setScopeConfig] = useState({ scope_type: "ALL", branch_ids: [], route_ids: [] });
   const [newPassword, setNewPassword] = useState("");
+  const [editForm, setEditForm] = useState({ display_name: "", email: "", default_branch_id: "", is_active: true });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (user) {
       setSelectedRoleIds(user.role_ids || []);
+      setEditForm({
+        display_name: user.display_name || "",
+        email: user.email || "",
+        default_branch_id: user.default_branch_id || "",
+        is_active: user.is_active !== false,
+      });
       setError("");
       setMessage("");
       setActiveSection("roles");
@@ -103,9 +110,33 @@ export const UserDetailPanel = ({ user, roles = [], branches = [], routeOptions 
     }
   };
 
+  const handleSaveEdit = async () => {
+    setError("");
+    setMessage("");
+    if (!editForm.display_name || editForm.display_name.length < 3) {
+      setError("El nombre debe tener al menos 3 caracteres");
+      return;
+    }
+    if (editForm.is_active === false && !window.confirm(`Desea desactivar a ${user.username}?`)) return;
+    try {
+      const payload = {
+        display_name: editForm.display_name,
+        email: editForm.email,
+        default_branch_id: editForm.default_branch_id ? Number(editForm.default_branch_id) : null,
+        is_active: editForm.is_active,
+      };
+      await updateAdminUser(user.user_id, payload);
+      setMessage("Usuario actualizado correctamente");
+      await onRefresh();
+    } catch (err) {
+      setError(err.message || "Error al actualizar usuario");
+    }
+  };
+
   if (!user) return null;
 
   const tabs = [
+    { id: "edit", label: "Editar", icon: <FiEdit2 /> },
     { id: "roles", label: "Roles", icon: <FiShield /> },
     { id: "password", label: "Contrasena", icon: <FiKey /> },
     { id: "scope", label: "Alcance", icon: <FiMap /> },
@@ -146,6 +177,57 @@ export const UserDetailPanel = ({ user, roles = [], branches = [], routeOptions 
         )}
         {message && (
           <div className="mb-3 rounded border border-green-200 bg-green-50 p-2 text-sm text-green-700">{message}</div>
+        )}
+
+        {activeSection === "edit" && (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600 mb-3">Editar informacion del usuario</p>
+            <div>
+              <label className="text-xs font-medium text-gray-600">Nombre completo</label>
+              <input
+                className="border rounded p-2 w-full text-sm"
+                value={editForm.display_name}
+                onChange={(e) => setEditForm((p) => ({ ...p, display_name: e.target.value }))}
+                placeholder="Nombre completo"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600">Email</label>
+              <input
+                className="border rounded p-2 w-full text-sm"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                placeholder="Email"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600">Sucursal por defecto</label>
+              <select
+                className="border rounded p-2 w-full text-sm"
+                value={editForm.default_branch_id}
+                onChange={(e) => setEditForm((p) => ({ ...p, default_branch_id: e.target.value }))}
+              >
+                <option value="">Sin sucursal</option>
+                {branches.map((b) => (
+                  <option key={b.branch_id} value={b.branch_id}>{b.branch_name}</option>
+                ))}
+              </select>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editForm.is_active}
+                onChange={(e) => setEditForm((p) => ({ ...p, is_active: e.target.checked }))}
+              />
+              Usuario activo
+            </label>
+            <div className="flex justify-end pt-2">
+              <button className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700" onClick={handleSaveEdit}>
+                Guardar cambios
+              </button>
+            </div>
+          </div>
         )}
 
         {activeSection === "roles" && (

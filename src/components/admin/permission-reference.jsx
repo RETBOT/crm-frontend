@@ -1,7 +1,7 @@
 import React from "react";
 
 const PERMISSION_CONTEXT = {
-  "users.manage": "Admin > Crear usuario",
+  "users.manage": "Admin > Crear/Editar usuario",
   "roles.manage": "Admin > Roles y permisos",
   "scope.manage": "Admin > Alcance de datos",
   "customers.create": "Clientes > Nuevo cliente",
@@ -15,11 +15,26 @@ const PERMISSION_CONTEXT = {
   "activities.update": "Actividades > Editar",
   "activities.complete": "Actividades > Completar/Cancelar",
   "activities.assign": "Actividades > Asignar a otros",
+  "reports.view": "Reportes > Ver reportes",
+  "reports.export": "Reportes > Exportar (Excel/PDF/CSV)",
+  "reports.scheduled": "Reportes > Programar envio por email",
+  "reports.saved_views": "Reportes > Vistas guardadas",
+  "products.create": "Productos > Nuevo producto",
+  "products.update": "Productos > Editar",
+  "products.delete": "Productos > Inactivar",
+  "products.price.edit": "Productos > Editar precio",
+  "opportunities.create": "Oportunidades > Nueva oportunidad",
+  "opportunities.update": "Oportunidades > Editar",
+  "opportunities.delete": "Oportunidades > Eliminar",
+  "opportunities.price.edit": "Oportunidades > Editar precios de items",
+  "opportunities.items.create": "Oportunidades > Agregar items",
+  "opportunities.items.update": "Oportunidades > Editar items",
+  "opportunities.items.delete": "Oportunidades > Eliminar items",
 };
 
 const PERMISSION_GROUPS = [
   {
-    label: "Usuarios",
+    label: "Usuarios y Acceso",
     icon: "👤",
     keys: ["users.manage", "roles.manage", "scope.manage"],
   },
@@ -37,6 +52,21 @@ const PERMISSION_GROUPS = [
     label: "Actividades",
     icon: "📅",
     keys: ["activities.create", "activities.update", "activities.complete", "activities.assign"],
+  },
+  {
+    label: "Oportunidades",
+    icon: "💼",
+    keys: ["opportunities.create", "opportunities.update", "opportunities.delete", "opportunities.price.edit", "opportunities.items.create", "opportunities.items.update", "opportunities.items.delete"],
+  },
+  {
+    label: "Productos",
+    icon: "🏷️",
+    keys: ["products.create", "products.update", "products.delete", "products.price.edit"],
+  },
+  {
+    label: "Reportes",
+    icon: "📊",
+    keys: ["reports.view", "reports.export", "reports.scheduled", "reports.saved_views"],
   },
 ];
 

@@ -46,11 +46,23 @@ export function Admin() {
         canManageUsers || canManageRoles || canManageScope ? getAdminBranches() : Promise.resolve([]),
         canManageUsers || canManageRoles || canManageScope ? getAdminRoutes() : Promise.resolve([]),
       ]);
-      setUsers(Array.isArray(usersData) ? usersData : []);
+      const freshUsers = Array.isArray(usersData) ? usersData : [];
+      setUsers(freshUsers);
       setRoles(Array.isArray(rolesData) ? rolesData : []);
       setPermissions(Array.isArray(permData) ? permData : []);
       setBranches(Array.isArray(branchesData) ? branchesData : []);
       setRoutes(Array.isArray(routesData) ? routesData : []);
+
+      if (selectedUser) {
+        const updated = freshUsers.find((u) => u.user_id === selectedUser.user_id);
+        if (updated) {
+          setSelectedUser({
+            ...updated,
+            role_names: (updated.roles || []).map((r) => r.role_name),
+            role_ids: (updated.roles || []).map((r) => r.role_id),
+          });
+        }
+      }
     } catch (err) {
       setError(err.message || "Error al cargar datos");
     } finally {

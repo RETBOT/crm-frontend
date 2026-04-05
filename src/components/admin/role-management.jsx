@@ -42,7 +42,7 @@ export const RoleManagement = ({ roles = [], permissions = [], onRefresh }) => {
 
   const handleSelectRole = (role) => {
     setSelectedRole(role);
-    // El backend devuelve permissions como array de strings (keys), necesitamos mapear a IDs
+    setMessage("");
     if (role.permissions && Array.isArray(role.permissions)) {
       const permIds = permissions
         .filter(p => role.permissions.includes(p.permission_key))

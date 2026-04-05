@@ -44,6 +44,12 @@ export const createAdminUser = async (payload) =>
     return response.data;
   });
 
+export const updateAdminUser = async (userId, payload) =>
+  withRefresh(async () => {
+    const response = await axios.put(`${url}admin/users/${userId}`, payload, authHeader());
+    return response.data;
+  });
+
 export const updateAdminUserRoles = async (userId, roleIds) =>
   withRefresh(async () => {
     const response = await axios.put(

@@ -12,7 +12,6 @@ export const UserManagement = ({ users = [], roles = [], branches = [], routes =
     email: "",
     password: "",
     default_branch_id: "",
-    is_multi_branch: false,
     is_active: true,
     role_ids: [],
   });
@@ -41,7 +40,6 @@ export const UserManagement = ({ users = [], roles = [], branches = [], routes =
         email: "",
         password: "",
         default_branch_id: "",
-        is_multi_branch: false,
         is_active: true,
         role_ids: [],
       });
@@ -178,41 +176,51 @@ export const UserManagement = ({ users = [], roles = [], branches = [], routes =
                   <th className="text-left p-3">Nombre</th>
                   <th className="text-left p-3">Estado</th>
                   <th className="text-left p-3">Roles</th>
+                  <th className="text-left p-3">Último acceso</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((u) => (
-                  <tr
-                    key={u.user_id}
-                    className={`border-t cursor-pointer transition-colors ${
-                      selectedUser?.user_id === u.user_id ? "bg-blue-50" : "hover:bg-gray-50"
-                    }`}
-                    onClick={() => onSelectUser(u)}
-                  >
-                    <td className="p-3 font-mono text-xs">@{u.username}</td>
-                    <td className="p-3 font-medium">{u.display_name}</td>
-                    <td className="p-3">
-                      {u.is_active ? (
-                        <span className="inline-flex items-center gap-1 text-green-600 text-xs">
-                          <FiCheckCircle /> Activo
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-red-500 text-xs">
-                          <FiXCircle /> Inactivo
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap gap-1">
-                        {(u.role_names || []).map((name, i) => (
-                          <span key={i} className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
-                            {name}
+                {filteredUsers.map((u) => {
+                  const lastLogin = u.last_login_at ? new Date(u.last_login_at) : null;
+                  const lastLoginStr = lastLogin
+                    ? lastLogin.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) +
+                      " " +
+                      lastLogin.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+                    : "Nunca";
+                  return (
+                    <tr
+                      key={u.user_id}
+                      className={`border-t cursor-pointer transition-colors ${
+                        selectedUser?.user_id === u.user_id ? "bg-blue-50" : "hover:bg-gray-50"
+                      }`}
+                      onClick={() => onSelectUser(u)}
+                    >
+                      <td className="p-3 font-mono text-xs">@{u.username}</td>
+                      <td className="p-3 font-medium">{u.display_name}</td>
+                      <td className="p-3">
+                        {u.is_active ? (
+                          <span className="inline-flex items-center gap-1 text-green-600 text-xs">
+                            <FiCheckCircle /> Activo
                           </span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-red-500 text-xs">
+                            <FiXCircle /> Inactivo
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-wrap gap-1">
+                          {(u.role_names || []).map((name, i) => (
+                            <span key={i} className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="p-3 text-xs text-gray-500">{lastLoginStr}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

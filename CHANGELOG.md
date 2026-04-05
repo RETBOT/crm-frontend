@@ -9,11 +9,20 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ### Added
 - Opcion de exportacion a CSV en el dropdown de Exportar en reportes
 - Icono FiTable para la opcion de exportacion a CSV
+- Tab "Editar" en panel de detalle de usuario para modificar nombre, email, sucursal, estado activo y multi-sucursal
+- Columna "Último acceso" en tabla de usuarios del admin
+- Confirmacion al desactivar un usuario desde el panel de edicion
 
 ### Changed
+- `is_multi_branch` se detecta automaticamente al seleccionar 2+ sucursales en el alcance (ya no es checkbox manual)
 - ExportButton ahora soporta 3 formatos: Excel, PDF y CSV
 - Mensajes de notificacion de exportacion usan etiquetas legibles (Excel, PDF, CSV)
 - Manejo de MIME types y extensiones refactorizado con diccionarios
+
+### Fixed
+- `selectedUser` se desincronizaba tras refrescar datos (ahora se actualiza con datos frescos)
+- Mensaje de exito persistia al cambiar de rol en role-management
+- `PERMISSION_CONTEXT` y `PERMISSION_GROUPS` desactualizados (faltaban reportes, productos, oportunidades)
 
 ---
 

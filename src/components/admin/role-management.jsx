@@ -161,7 +161,7 @@ export const RoleManagement = ({ roles = [], permissions = [], onRefresh }) => {
             </div>
             <p className="text-sm font-medium text-gray-700 mb-3">Permisos del rol</p>
             <div className="max-h-96 overflow-y-auto pr-2 mb-4">
-              {PERMISSION_GROUPS.map((group) => renderPermissionCheckboxes(group, formData.permission_ids.map(id => permMap[id]?.permission_key).filter(Boolean), (id) => togglePermOnForm(id)))}
+              {PERMISSION_GROUPS.map((group) => renderPermissionCheckboxes(group, formData.permission_ids, (id) => togglePermOnForm(id)))}
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" className="px-4 py-2 border rounded text-gray-700" onClick={() => setShowCreateForm(false)}>
@@ -222,7 +222,7 @@ export const RoleManagement = ({ roles = [], permissions = [], onRefresh }) => {
             Editar permisos: {selectedRole.role_name}
           </h3>
           <div className="max-h-[500px] overflow-y-auto pr-2 mb-4">
-            {PERMISSION_GROUPS.map((group) => renderPermissionCheckboxes(group, selectedPermissionIds.map(id => permMap[id]?.permission_key).filter(Boolean), togglePermOnRole))}
+            {PERMISSION_GROUPS.map((group) => renderPermissionCheckboxes(group, selectedPermissionIds, togglePermOnRole))}
           </div>
           <div className="flex justify-end gap-2">
             <button className="px-4 py-2 border rounded text-gray-700" onClick={() => setSelectedRole(null)}>

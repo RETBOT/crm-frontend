@@ -3,24 +3,35 @@ import { getNotifications, getNotificationsBadge, markNotificationRead, markAllN
 
 const NotificationContext = createContext(null);
 
-const POLL_INTERVAL = 30000;
+const POLL_INTERVAL = 60000;
+const MAX_RETRIES = 3;
 
 export function NotificationProvider({ children }) {
   const [count, setCount] = useState(0);
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const intervalRef = useRef(null);
+  const retryCountRef = useRef(0);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  const isAuthenticated = !!token;
+  const tokenRef = useRef(typeof window !== "undefined" ? localStorage.getItem("token") : null);
+  const isAuthenticated = !!tokenRef.current;
 
   const fetchBadge = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
       const data = await getNotificationsBadge();
       setCount(data.count || 0);
+      retryCountRef.current = 0;
     } catch {
-      // silenciar errores de polling
+      retryCountRef.current += 1;
+      if (retryCountRef.current >= MAX_RETRIES) {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        setTimeout(() => {
+          retryCountRef.current = 0;
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          intervalRef.current = setInterval(fetchBadge, POLL_INTERVAL);
+        }, POLL_INTERVAL * 2);
+      }
     }
   }, [isAuthenticated]);
 

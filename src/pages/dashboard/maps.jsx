@@ -6,8 +6,9 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster/dist/leaflet.markercluster.js';
 import L from 'leaflet';
 import { FiMapPin, FiSearch, FiNavigation, FiX, FiCheck, FiMinus, FiMap, FiTrash2, FiLoader } from 'react-icons/fi';
-import { getClientes, getRutas, getSucursales } from '../../api/accounts';
+import { getClientes, getVendedores, getSucursales } from '../../api/accounts';
 import { getActividadesCheckins } from '../../api/activities';
+import { logger } from '../../utils/logger';
 
 const STATUS_COLORS = {
   ACTIVO: '#22c55e',
@@ -111,12 +112,12 @@ function createPopupContent(cliente, rutas) {
     container.appendChild(sucursal);
   }
 
-  if (cliente.RUTA) {
-    const rutaDsc = rutas.find((r) => normalizeId(r.ID) === normalizeId(cliente.RUTA))?.DSC || cliente.RUTA;
-    const ruta = document.createElement('p');
-    ruta.className = 'text-xs';
-    ruta.textContent = 'Ruta: ' + rutaDsc;
-    container.appendChild(ruta);
+  if (cliente.VENDEDOR) {
+    const vendedorDsc = vendedores.find((v) => normalizeId(v.ID) === normalizeId(cliente.VENDEDOR))?.DSC || cliente.VENDEDOR;
+    const vendedor = document.createElement('p');
+    vendedor.className = 'text-xs';
+    vendedor.textContent = 'Vendedor: ' + vendedorDsc;
+    container.appendChild(vendedor);
   }
 
   if (cliente.TEL) {
@@ -378,7 +379,7 @@ async function calculateOptimalRoute(selectedClients, userLocation) {
   if (coords.length < 2) return null;
 
   const coordString = coords.map(([lon, lat]) => `${lon},${lat}`).join(';');
-  const url = `http://router.project-osrm.org/trip/v1/driving/${coordString}?overview=full&geometries=geojson&steps=true&source=first`;
+  const url = `https://router.project-osrm.org/trip/v1/driving/${coordString}?overview=full&geometries=geojson&steps=true&source=first`;
 
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
@@ -494,7 +495,7 @@ export function Maps() {
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [totalRegs, setTotalRegs] = useState(0);
   const [sucursales, setSucursales] = useState([]);
-  const [rutas, setRutas] = useState([]);
+  const [vendedores, setVendedores] = useState([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [selectedClients, setSelectedClients] = useState(new Set());
   const [routeResult, setRouteResult] = useState(null);
@@ -545,7 +546,7 @@ export function Maps() {
           filters.status,
           filters.salesRep,
           page,
-          0,
+          50,
           'MAPA'
         );
         const clientesData = res.data || res;
@@ -557,7 +558,7 @@ export function Maps() {
         setTotalPaginas(totalPaginasData);
         setTotalRegs(totalRegsData);
       } catch (fetchError) {
-        console.error('Error al cargar clientes:', fetchError);
+        logger.error('Error al cargar clientes:', fetchError);
         setError(fetchError?.message || 'No se pudieron cargar los clientes');
         setClientes([]);
         setTotalPaginas(1);
@@ -576,7 +577,7 @@ export function Maps() {
         const res = await getSucursales('');
         setSucursales(Array.isArray(res) ? res : res.data || []);
       } catch (fetchError) {
-        console.error('Error al cargar sucursales:', fetchError);
+        logger.error('Error al cargar sucursales:', fetchError);
       }
     };
 
@@ -584,25 +585,25 @@ export function Maps() {
   }, []);
 
   useEffect(() => {
-    const fetchRutas = async () => {
+    const fetchVendedores = async () => {
       try {
-        const res = await getRutas(filters.sucursal);
-        const rutasData = Array.isArray(res) ? res : res.data || [];
-        setRutas(rutasData);
+        const res = await getVendedores(filters.sucursal);
+        const vendedoresData = Array.isArray(res) ? res : res.data || [];
+        setVendedores(vendedoresData);
 
         if (
           filters.salesRep &&
-          !rutasData.some((ruta) => normalizeId(ruta.ID) === normalizeId(filters.salesRep))
+          !vendedoresData.some((vendedor) => normalizeId(vendedor.ID) === normalizeId(filters.salesRep))
         ) {
           setFilters((prev) => ({ ...prev, salesRep: '' }));
         }
       } catch (fetchError) {
-        console.error('Error al cargar rutas:', fetchError);
-        setRutas([]);
+        logger.error('Error al cargar vendedores:', fetchError);
+        setVendedores([]);
       }
     };
 
-    fetchRutas();
+    fetchVendedores();
   }, [filters.sucursal]);
 
   useEffect(() => {
@@ -617,10 +618,12 @@ export function Maps() {
           FROM_DATE: checkinDateFrom || null,
           TO_DATE: checkinDateTo || null,
           TYPE: checkinType || null,
+          NPAG: checkinsPage,
+          TPAG: 50,
         });
         const data = Array.isArray(res) ? res : (res.data || []);
         setCheckins(data);
-        setCheckinsTotal(data.length);
+        setCheckinsTotal(res.total_regs || data.length);
       } catch {
         setCheckins([]);
         setCheckinsTotal(0);
@@ -629,7 +632,7 @@ export function Maps() {
       }
     };
     fetchCheckins();
-  }, [activeMapTab, checkinDateFrom, checkinDateTo, checkinType]);
+  }, [activeMapTab, checkinDateFrom, checkinDateTo, checkinType, checkinsPage]);
 
   useEffect(() => {
     if (!clienteSeleccionado) return;
@@ -805,14 +808,14 @@ export function Maps() {
                   onChange={(e) => handleFilterChange('salesRep', e.target.value)}
                 >
                   <option value="">
-                    Todas las rutas
+                   Todos los vendedores
                     {filters.sucursal
                       ? ` de ${sucursales.find((sucursal) => normalizeId(sucursal.ID) === normalizeId(filters.sucursal))?.DSC || ''}`
                       : ''}
                   </option>
-                  {rutas.map((ruta) => (
-                    <option key={ruta.ID} value={normalizeId(ruta.ID)}>
-                      {ruta.DSC}
+                  {vendedores.map((vendedor) => (
+                    <option key={vendedor.ID} value={normalizeId(vendedor.ID)}>
+                      {vendedor.DSC}
                     </option>
                   ))}
                 </select>
@@ -1097,7 +1100,7 @@ export function Maps() {
 
           <MarkerClusterLayer
             clientesConCoordenadas={clientesConCoordenadas}
-            rutas={rutas}
+            rutas={vendedores}
             markersRef={markersRef}
             clienteSeleccionado={clienteSeleccionado}
           />

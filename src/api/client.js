@@ -7,17 +7,32 @@ const api = axios.create({
   timeout: 30000,
 });
 
+const responseCache = new Map();
+const CACHE_TTL = 30000;
+
+function cacheKey(config) {
+  return `${config.method}:${config.url}:${JSON.stringify(config.data || {})}`;
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  config.headers["X-Requested-With"] = "XMLHttpRequest";
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  async (response) => {
+    const key = cacheKey(response.config);
+    if (response.config.method === "get" || response.config.method === "post") {
+      responseCache.set(key, {
+        data: response.data,
+        timestamp: Date.now(),
+      });
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 
@@ -52,5 +67,9 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export function clearCache() {
+  responseCache.clear();
+}
 
 export default api;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { logger } from "../../utils/logger";
 import {
   FiCalendar,
   FiMapPin,
@@ -89,7 +90,7 @@ export function ReportFilters({
       setStages(allStages);
 
     } catch (error) {
-      console.error("Error cargando opciones de filtros:", error);
+      logger.error("Error cargando opciones de filtros:", error);
     } finally {
       setLoadingOptions(false);
     }

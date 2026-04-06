@@ -529,9 +529,9 @@ export function AdminUsersRoles() {
                   value={scopeConfig.scope_type}
                   onChange={(e) => setScopeConfig((prev) => ({ ...prev, scope_type: e.target.value }))}
                 >
-                  <option value="ALL">ALL (todas sucursales y rutas)</option>
+                  <option value="ALL">ALL (todas sucursales y vendedores)</option>
                   <option value="BRANCH">BRANCH (solo sucursales asignadas)</option>
-                  <option value="ROUTE">ROUTE (sucursales asignadas + rutas permitidas)</option>
+                  <option value="ROUTE">ROUTE (sucursales asignadas + vendedores permitidos)</option>
                 </select>
               </div>
 
@@ -555,7 +555,7 @@ export function AdminUsersRoles() {
 
               {scopeConfig.scope_type === "ROUTE" && (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Rutas permitidas (solo de sucursales asignadas)</p>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Vendedores permitidos (solo de sucursales asignadas)</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     {visibleRoutesByScopeBranch.map((route) => (
                       <label key={route.route_id} className="border rounded p-2 flex items-center gap-2 text-sm">

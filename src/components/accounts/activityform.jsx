@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { CustomerSearchSelect } from "../common/CustomerSearchSelect";
 
 const priorityOptions = [
   { code: "Alta", name: "Alta" },
@@ -12,14 +13,12 @@ export const ActivityForm = ({
   contacts,
   initialData,
   customerId,
-  customerList = [],
   assigneeList = [],
   onCustomerChange,
   submitLabel,
   onSave,
   onCancel,
 }) => {
-  const needsCustomerSelector = customerList.length > 0 && !customerId && !initialData?.CUSTOMER_ID;
   const needsAssigneeSelector = assigneeList.length > 0 && !initialData?.ACTIVITYID;
 
   const [formData, setFormData] = useState({
@@ -41,9 +40,12 @@ export const ActivityForm = ({
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (name === "CUSTOMER_ID" && onCustomerChange) {
-      const numericValue = value ? Number(value) : 0;
-      onCustomerChange(numericValue);
+  };
+
+  const handleCustomerChange = (id) => {
+    setFormData((prev) => ({ ...prev, CUSTOMER_ID: id }));
+    if (onCustomerChange) {
+      onCustomerChange(id ? Number(id) : 0);
     }
   };
 
@@ -101,21 +103,15 @@ export const ActivityForm = ({
       )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {needsCustomerSelector && (
-          <select
-            name="CUSTOMER_ID"
-            value={formData.CUSTOMER_ID}
-            onChange={handleChange}
-            className="border rounded p-2 md:col-span-2"
-            required
-          >
-            <option value="">Selecciona cliente</option>
-            {customerList.map((c) => (
-              <option key={c.CLIENTEID || c.customer_id} value={c.customer_id || c.CLIENTEID}>
-                {c.NOMBRECLI || c.customer_name}
-              </option>
-            ))}
-          </select>
+        {!customerId && !initialData?.CUSTOMER_ID && (
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+            <CustomerSearchSelect
+              value={formData.CUSTOMER_ID}
+              onChange={handleCustomerChange}
+              placeholder="Buscar cliente..."
+            />
+          </div>
         )}
 
         <select

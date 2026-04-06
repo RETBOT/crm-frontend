@@ -8,6 +8,10 @@ import {
   FiPlus,
   FiUser,
   FiXCircle,
+  FiChevronLeft,
+  FiChevronRight,
+  FiChevronsLeft,
+  FiChevronsRight,
 } from "react-icons/fi";
 import {
   completarActividad,
@@ -76,15 +80,21 @@ export const ActivityList = ({ clienteId, contacts = [], customerData = {} }) =>
   const [activityTypes, setActivityTypes] = useState([]);
   const [assignees, setAssignees] = useState([]);
   const [checkinActivity, setCheckinActivity] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(25);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  const [totalRegs, setTotalRegs] = useState(0);
   const canAssign = hasPermission("activities.assign");
 
   const fetchActividades = async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await getActividades({ CUSTOMER_ID: clienteId, TPAG: 50 });
+      const res = await getActividades({ CUSTOMER_ID: clienteId, TPAG: pageSize, NPAG: page });
       const data = res.data || res;
       setActividades(Array.isArray(data) ? data : []);
+      setTotalPaginas(res.tot_pags || 1);
+      setTotalRegs(res.total_regs || 0);
     } catch (err) {
       setError(err?.message || "Error al cargar actividades");
     } finally {
@@ -124,7 +134,7 @@ export const ActivityList = ({ clienteId, contacts = [], customerData = {} }) =>
       fetchTipos();
       fetchAssignees();
     }
-  }, [clienteId]);
+  }, [clienteId, page]);
 
   const handleCreate = async (payload) => {
     await crearActividad(payload);
@@ -286,6 +296,45 @@ export const ActivityList = ({ clienteId, contacts = [], customerData = {} }) =>
           onConfirm={(lat, lon, notes) => handleCompleteWithCheckin(checkinActivity.ACTIVITYID, lat, lon, notes)}
           onCompleteWithoutLocation={(notes) => handleCompleteWithoutLocation(checkinActivity.ACTIVITYID, notes)}
         />
+      )}
+
+      {totalRegs > 0 && (
+        <div className="flex justify-between items-center mt-4 pt-3 border-t">
+          <span className="text-sm text-gray-600">
+            Mostrando {((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRegs)} de {totalRegs}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              className="p-1 rounded border hover:bg-gray-50 disabled:opacity-30"
+              onClick={() => setPage(1)}
+              disabled={page === 1}
+            >
+              <FiChevronsLeft size={14} />
+            </button>
+            <button
+              className="p-1 rounded border hover:bg-gray-50 disabled:opacity-30"
+              onClick={() => setPage((p) => Math.max(p - 1, 1))}
+              disabled={page === 1}
+            >
+              <FiChevronLeft size={14} />
+            </button>
+            <span className="px-2 text-sm text-gray-600">Pag. {page} / {totalPaginas}</span>
+            <button
+              className="p-1 rounded border hover:bg-gray-50 disabled:opacity-30"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= totalPaginas}
+            >
+              <FiChevronRight size={14} />
+            </button>
+            <button
+              className="p-1 rounded border hover:bg-gray-50 disabled:opacity-30"
+              onClick={() => setPage(totalPaginas)}
+              disabled={page >= totalPaginas}
+            >
+              <FiChevronsRight size={14} />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

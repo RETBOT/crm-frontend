@@ -5,6 +5,7 @@ import { getConnectedAccounts, disconnectEmail } from "../../api/email";
 import { ConnectEmailModal } from "../../components/email/ConnectEmailModal";
 import { PERMISSION_GROUPS } from "../../utils/permissions-config";
 import { Notification } from "../../components/notifications/notification";
+import { logger } from "../../utils/logger";
 
 export function Profile() {
   const [loading, setLoading] = useState(true);
@@ -31,7 +32,7 @@ export function Profile() {
       const data = await getConnectedAccounts();
       setEmailAccounts(data.accounts || []);
     } catch (err) {
-      console.error("Error al cargar cuentas de correo:", err);
+      logger.error("Error al cargar cuentas de correo:", err);
     } finally {
       setLoadingEmails(false);
     }

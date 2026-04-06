@@ -16,6 +16,7 @@ import {
   FiCalendar,
 } from "react-icons/fi";
 import { hasPermission } from "../../../utils/auth";
+import { logger } from "../../../utils/logger";
 import { ReportFilters } from "../../../components/reports/report-filters";
 import {
   getDashboardReport,
@@ -158,7 +159,7 @@ export function Reports() {
       }
       setData(result?.data || result);
     } catch (err) {
-      console.error("Error cargando reporte:", err);
+      logger.error("Error cargando reporte:", err);
       setError(err.message || "Error al cargar el reporte");
     } finally {
       setLoading(false);

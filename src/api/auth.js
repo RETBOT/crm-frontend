@@ -1,4 +1,5 @@
 import axios from "axios";
+import { logger } from "../utils/logger";
 
 var url = import.meta.env.VITE_API_URL;
 const time = import.meta.env.VITE_TIME_REFRESH;
@@ -26,7 +27,7 @@ export const refreshToken = async (func, ...args) => {
 
     return await func(...args);
   } catch (error) {
-    console.error("Error al renovar token");
+    logger.error("Error al renovar token", error);
   }
 };
 // /** login */

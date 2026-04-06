@@ -8,3 +8,4 @@ export * from "./activities/checkin-modal";
 export * from "./email/EmailComposer";
 export * from "./email/EmailHistory";
 export * from "./email/ConnectEmailModal";
+export * from "./common/CustomerSearchSelect";

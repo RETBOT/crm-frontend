@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { logger } from "../../utils/logger";
 import { FiDownload, FiFile, FiFileText, FiChevronDown, FiTable } from "react-icons/fi";
 import { Button, Menu, MenuHandler, MenuList, MenuItem } from "@material-tailwind/react";
 import { exportReport } from "../../api/reports";
@@ -51,7 +52,7 @@ export function ExportButton({
       showNotification(`Reporte exportado correctamente en formato ${formatLabels[format]}`);
       if (onExportComplete) onExportComplete({ success: true, format });
     } catch (error) {
-      console.error("Error al exportar:", error);
+      logger.error("Error al exportar:", error);
       showNotification(error.message || "Error al exportar reporte", "error");
       if (onExportComplete) onExportComplete({ success: false, error });
     } finally {

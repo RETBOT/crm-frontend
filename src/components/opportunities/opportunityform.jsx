@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FiPlus, FiTrash2 } from "react-icons/fi";
+import { CustomerSearchSelect } from "../common/CustomerSearchSelect";
 import { hasPermission } from "../../utils/auth";
 import { PERMISSIONS } from "../../utils/permissions";
 
@@ -8,7 +9,6 @@ export const OpportunityForm = ({
   initialData,
   initialItems = [],
   customerId,
-  customerList = [],
   contactList = [],
   products = [],
   pipelines = [],
@@ -17,7 +17,6 @@ export const OpportunityForm = ({
   onCancel,
 }) => {
   const canEditPrice = hasPermission(PERMISSIONS.OPPORTUNITIES_PRICE_EDIT);
-  const needsCustomerSelector = customerList.length > 0 && !customerId;
   const today = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -170,17 +169,14 @@ export const OpportunityForm = ({
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          {needsCustomerSelector && (
+          {!customerId && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-              <select name="CUSTOMER_ID" value={formData.CUSTOMER_ID} onChange={handleChange} className="border rounded p-2 w-full" required>
-                <option value="">Selecciona cliente</option>
-                {customerList.map((c) => (
-                  <option key={c.CLIENTEID || c.customer_id} value={c.customer_id || c.CLIENTEID}>
-                    {c.NOMBRECLI || c.customer_name}
-                  </option>
-                ))}
-              </select>
+              <CustomerSearchSelect
+                value={formData.CUSTOMER_ID}
+                onChange={(id) => setFormData((p) => ({ ...p, CUSTOMER_ID: id }))}
+                placeholder="Buscar cliente..."
+              />
             </div>
           )}
           <div>

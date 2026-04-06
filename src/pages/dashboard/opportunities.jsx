@@ -11,10 +11,11 @@ import {
   createOpportunity, updateOpportunity, advanceStage,
   setOpportunityStatus, reopenOpportunity, deleteOpportunity,
 } from "../../api/opportunities";
-import { getClientes, getContactos } from "../../api/accounts";
+import { getContactos } from "../../api/accounts";
 import { getProducts } from "../../api/products";
-import { OpportunityForm, Notification } from "../../components";
+import { OpportunityForm, Notification, CustomerSearchSelect } from "../../components";
 import { hasPermission } from "../../utils/auth";
+import { logger } from "../../utils/logger";
 
 const statusStyles = {
   abierta: "bg-blue-100 text-blue-800",
@@ -23,6 +24,11 @@ const statusStyles = {
 };
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
+function SortIcon({ sortBy, sortDir, column }) {
+  if (sortBy !== column) return <FiMinus className="ml-1 text-gray-300" size={12} />;
+  return sortDir === "ASC" ? <FiArrowUp className="ml-1 text-blue-600" size={12} /> : <FiArrowDown className="ml-1 text-blue-600" size={12} />;
+}
 
 export function Opportunities() {
   const [opportunities, setOpportunities] = useState([]);
@@ -36,7 +42,6 @@ export function Opportunities() {
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingOpp, setEditingOpp] = useState(null);
-  const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
@@ -80,36 +85,43 @@ export function Opportunities() {
     setLoading(true);
     setError("");
     try {
-      const [oppRes, pipeRes, custRes, prodRes] = await Promise.all([
-        getOpportunities({
-          SEARCH: debouncedSearch,
-          CUSTOMER_ID: filterCustomer || null,
-          STATUS: filterStatus || null,
-          OWNER_USER_ID: filterOwner || null,
-          CLOSE_DATE_FROM: filterDateFrom || null,
-          CLOSE_DATE_TO: filterDateTo || null,
-          NPAG: page,
-          TPAG: pageSize,
-          SORT_BY: sortBy,
-          SORT_DIR: sortDir,
-        }),
-        getPipelines(),
-        getClientes(0, "", "", "ACTIVO", "", 1, 0, ""),
-        getProducts(),
-      ]);
+      const oppRes = await getOpportunities({
+        SEARCH: debouncedSearch,
+        CUSTOMER_ID: filterCustomer || null,
+        STATUS: filterStatus || null,
+        OWNER_USER_ID: filterOwner || null,
+        CLOSE_DATE_FROM: filterDateFrom || null,
+        CLOSE_DATE_TO: filterDateTo || null,
+        NPAG: page,
+        TPAG: pageSize,
+        SORT_BY: sortBy,
+        SORT_DIR: sortDir,
+      });
       setOpportunities(oppRes.data || []);
       setTotalPaginas(oppRes.tot_pags || 1);
       setTotalRegs(oppRes.total_regs || 0);
-      setPipelines(Array.isArray(pipeRes) ? pipeRes : []);
-      const custData = custRes.data || custRes;
-      setCustomers(Array.isArray(custData) ? custData : []);
-      setProducts(Array.isArray(prodRes) ? prodRes : []);
     } catch (err) {
       setError(err?.message || "Error al cargar oportunidades");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const loadStaticData = async () => {
+      try {
+        const [pipeRes, prodRes] = await Promise.all([
+          getPipelines(),
+          getProducts(),
+        ]);
+        setPipelines(Array.isArray(pipeRes) ? pipeRes : []);
+        setProducts(Array.isArray(prodRes) ? prodRes : []);
+      } catch (err) {
+        logger.error("Error loading static data:", err);
+      }
+    };
+    loadStaticData();
+  }, []);
 
   useEffect(() => { loadData(); }, [debouncedSearch, page, pageSize, filterCustomer, filterStatus, filterOwner, filterDateFrom, filterDateTo, sortBy, sortDir]);
 
@@ -122,8 +134,8 @@ export function Opportunities() {
 
   const loadContacts = async (customerId) => {
     try {
-      const res = await getContactos(customerId);
-      setContacts(Array.isArray(res) ? res : []);
+      const res = await getContactos(customerId, 1, 100);
+      setContacts(res.data || res);
     } catch { setContacts([]); }
   };
 
@@ -285,11 +297,6 @@ export function Opportunities() {
     }
   };
 
-  const SortIcon = ({ column }) => {
-    if (sortBy !== column) return <FiMinus className="ml-1 text-gray-300" size={12} />;
-    return sortDir === "ASC" ? <FiArrowUp className="ml-1 text-blue-600" size={12} /> : <FiArrowDown className="ml-1 text-blue-600" size={12} />;
-  };
-
   const formatAmount = (amount) => {
     if (!amount) return "$0";
     return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount);
@@ -354,12 +361,11 @@ export function Opportunities() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Cliente</label>
-                <select className="w-full border rounded-lg px-3 py-2 text-sm" value={filterCustomer} onChange={(e) => setFilterCustomer(e.target.value)}>
-                  <option value="">Todos</option>
-                  {customers.map((c) => (
-                    <option key={c.customer_id || c.CLIENTEID} value={c.customer_id || c.CLIENTEID}>{c.customer_name || c.NOMBRECLI}</option>
-                  ))}
-                </select>
+                <CustomerSearchSelect
+                  value={filterCustomer}
+                  onChange={(id) => setFilterCustomer(id)}
+                  placeholder="Buscar cliente..."
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Estatus</label>
@@ -394,7 +400,6 @@ export function Opportunities() {
             title={editingOpp ? "Editar Oportunidad" : "Nueva Oportunidad"}
             initialData={editingOpp}
             initialItems={editingOpp ? oppItems : []}
-            customerList={customers}
             contactList={contacts}
             products={products}
             pipelines={pipelines}
@@ -450,13 +455,13 @@ export function Opportunities() {
                     <th className="px-4 py-3">Cliente</th>
                     <th className="px-4 py-3">Etapa</th>
                     <th className="px-4 py-3 cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort("amount")}>
-                      <span className="flex items-center">Valor <SortIcon column="amount" /></span>
+                      <span className="flex items-center">Valor <SortIcon sortBy={sortBy} sortDir={sortDir} column="amount" /></span>
                     </th>
                     <th className="px-4 py-3 cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort("close_date")}>
-                      <span className="flex items-center">Cierre <SortIcon column="close_date" /></span>
+                      <span className="flex items-center">Cierre <SortIcon sortBy={sortBy} sortDir={sortDir} column="close_date" /></span>
                     </th>
                     <th className="px-4 py-3 cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort("probability")}>
-                      <span className="flex items-center">Prob. <SortIcon column="probability" /></span>
+                      <span className="flex items-center">Prob. <SortIcon sortBy={sortBy} sortDir={sortDir} column="probability" /></span>
                     </th>
                   </tr>
                 </thead>

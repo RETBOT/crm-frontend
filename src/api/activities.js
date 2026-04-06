@@ -224,6 +224,8 @@ export const getActividadesCheckins = async (filtros = {}) => {
         TO_DATE: filtros.TO_DATE || null,
         USER_ID: filtros.USER_ID || null,
         TYPE: filtros.TYPE || null,
+        NPAG: filtros.NPAG || 1,
+        TPAG: filtros.TPAG || 50,
       },
       {
         headers: {

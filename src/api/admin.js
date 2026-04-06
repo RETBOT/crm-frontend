@@ -32,9 +32,9 @@ export const getAdminRoles = async () =>
     return response.data;
   });
 
-export const getAdminUsers = async () =>
+export const getAdminUsers = async (page = 1, pageSize = 50) =>
   withRefresh(async () => {
-    const response = await axios.get(`${url}admin/users`, authHeader());
+    const response = await axios.get(`${url}admin/users?page=${page}&pageSize=${pageSize}`, authHeader());
     return response.data;
   });
 

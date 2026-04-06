@@ -11,6 +11,11 @@ import { PERMISSIONS } from "../../utils/permissions";
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
+function SortIcon({ sortBy, sortDir, column }) {
+  if (sortBy !== column) return <FiMinus className="ml-1 text-gray-300" size={12} />;
+  return sortDir === "ASC" ? <FiArrowUp className="ml-1 text-blue-600" size={12} /> : <FiArrowDown className="ml-1 text-blue-600" size={12} />;
+}
+
 export function Products() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -142,11 +147,6 @@ export function Products() {
       setSortBy(column);
       setSortDir("ASC");
     }
-  };
-
-  const SortIcon = ({ column }) => {
-    if (sortBy !== column) return <FiMinus className="ml-1 text-gray-300" size={12} />;
-    return sortDir === "ASC" ? <FiArrowUp className="ml-1 text-blue-600" size={12} /> : <FiArrowDown className="ml-1 text-blue-600" size={12} />;
   };
 
   const formatAmount = (amount) => {
@@ -325,14 +325,14 @@ export function Products() {
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort("sku")}>
-                      <span className="flex items-center">SKU <SortIcon column="sku" /></span>
+                      <span className="flex items-center">SKU <SortIcon sortBy={sortBy} sortDir={sortDir} column="sku" /></span>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort("product_name")}>
-                      <span className="flex items-center">Nombre <SortIcon column="product_name" /></span>
+                      <span className="flex items-center">Nombre <SortIcon sortBy={sortBy} sortDir={sortDir} column="product_name" /></span>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase cursor-pointer select-none hover:bg-gray-200" onClick={() => handleSort("unit_price")}>
-                      <span className="flex items-center justify-end">Precio <SortIcon column="unit_price" /></span>
+                      <span className="flex items-center justify-end">Precio <SortIcon sortBy={sortBy} sortDir={sortDir} column="unit_price" /></span>
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>

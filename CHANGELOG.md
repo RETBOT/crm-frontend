@@ -8,6 +8,41 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Added
 - Integracion de correo electronico: enviar correos desde Gmail y Outlook sin salir del CRM
+
+### Fixed
+- **Crash**: eliminada referencia a variable inexistente `customerList` en `ActivityForm` (activities.jsx:413)
+- Content Security Policy: agregados dominios externos de imagenes (`ui-avatars.com`, `*.tile.openstreetmap.org`, `cdnjs.cloudflare.com`) y `nominatim.openstreetmap.org` a `connect-src` para geocodificacion
+
+### Changed
+- **Renombrar ruta a vendedor**: Cambiado nomenclatura de "ruta" a "vendedor" en todo el frontend
+  - API: `getRutas` → `getVendedores`, endpoint `/cn/rutas` → `/cn/vendedores`
+  - Pages: accounts.jsx, prospects.jsx, maps.jsx - labels y estados actualizados
+  - Components: customerform.jsx - label "Selecciona ruta" → "Selecciona vendedor"
+  - Admin: user-detail-panel.jsx, admin-users-roles.jsx - labels de alcance
+
+- **Optimizacion de rendimiento**: oportunidades carga datos estaticos (pipelines, clientes, productos) una sola vez en vez de en cada cambio de filtro
+- **Optimizacion de rendimiento**: eliminadas llamadas duplicadas a `fetchRutas()` en cuentas y prospectos al montar y al cambiar filtros
+- **Optimizacion de rendimiento**: polling de notificaciones aumentado de 30s a 60s con backoff exponencial tras errores consecutivos
+- **Optimizacion de rendimiento**: eliminado header `X-Requested-With` del interceptor axios para reducir preflight CORS (OPTIONS requests)
+- **Optimizacion de rendimiento**: agregado cache en memoria para respuestas de API en `api/client.js` con TTL de 30s
+- **Optimizacion de rendimiento**: `filteredContacts` en contactos ahora usa `useMemo` para evitar recalculo en cada render
+- **Optimizacion de rendimiento**: componentes `LoadingSpinner`, `EmptyState` y `SortIcon` movidos fuera de los componentes principales para evitar recreacion en cada render
+- **Correccion**: URL de OSRM en mapas cambiada de HTTP a HTTPS para evitar bloqueo de mixed content
+- **Paginacion**: contactos ahora usa paginacion server-side (50 por pagina) con controles de navegacion
+- **Paginacion**: ActivityList (widget en cuentas/prospectos) ahora usa paginacion server-side (25 por pagina)
+- **Paginacion**: administracion de usuarios ahora usa paginacion server-side (50 por pagina) con controles de navegacion
+- **Dropdowns de clientes**: reemplazados `<select>` por `CustomerSearchSelect` con búsqueda on-demand (debounce 400ms, máx 50 resultados) en actividades, oportunidades, contactos y formularios
+- **Eliminada carga masiva**: removidas llamadas `getClientes` con `TPAG: 0` que cargaban todos los clientes al iniciar páginas
+- **Paginacion checkins**: mapas ahora envia `NPAG` y `TPAG` a `getActividadesCheckins` (50 por pagina)
+- **Limite contactos**: llamadas `getContactos` reducidas de 500 a 100 registros en cuentas, prospectos, oportunidades y actividades
+- **Selector pageSize**: contactos ahora permite elegir entre 25, 50 o 100 registros por pagina
+- **Logging**: reemplazados 26 `console.error` por `logger.error` en 10 archivos para registro centralizado
+- **Limpieza**: eliminados imports no usados (`useMemo`, `FiDollarSign`, `FiCheckCircle`, `FiCalendar`, `FiFileText`, `FiMenu`) en cuentas y prospectos
+- **Paginacion checkins**: mapas ahora envia `NPAG` y `TPAG` a `getActividadesCheckins` (50 por pagina)
+- **Limite contactos**: llamadas `getContactos` reducidas de 500 a 100 registros en cuentas, prospectos, oportunidades y actividades
+- **Selector pageSize**: contactos ahora permite elegir entre 25, 50 o 100 registros por pagina
+- **Logging**: reemplazados 26 `console.error` por `logger.error` en 10 archivos para registro centralizado
+- **Limpieza**: eliminados imports no usados (`useMemo`, `FiDollarSign`, `FiCheckCircle`, `FiCalendar`, `FiFileText`, `FiMenu`) en cuentas y prospectos
 - Sincronizacion de calendario: Google Calendar y Outlook Calendar integrados al CRM
 - Plantillas de correo: CRUD completo con variables dinamicas
 - Tracking de apertura y clics en correos enviados

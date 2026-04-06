@@ -318,9 +318,9 @@ export const UserDetailPanel = ({ user, roles = [], branches = [], routeOptions 
                 value={scopeConfig.scope_type}
                 onChange={(e) => setScopeConfig((p) => ({ ...p, scope_type: e.target.value }))}
               >
-                <option value="ALL">Todas las sucursales y rutas</option>
+                <option value="ALL">Todas las sucursales y vendedores</option>
                 <option value="BRANCH">Sucursales especificas</option>
-                <option value="ROUTE">Rutas especificas</option>
+                <option value="ROUTE">Vendedores especificos</option>
               </select>
             </div>
 
@@ -344,7 +344,7 @@ export const UserDetailPanel = ({ user, roles = [], branches = [], routeOptions 
 
             {scopeConfig.scope_type === "ROUTE" && (
               <div className="mb-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Rutas</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">Vendedores</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {routeOptions.map((r) => (
                     <label key={r.route_id} className="border rounded p-2 flex items-center gap-2 text-sm">

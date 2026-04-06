@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FiUsers, FiShield, FiLock } from "react-icons/fi";
+import { FiUsers, FiShield, FiLock, FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight } from "react-icons/fi";
 import {
   getAdminBranches,
   getAdminPermissions,
@@ -28,6 +28,10 @@ export function Admin() {
   const [branches, setBranches] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize] = useState(50);
+  const [userTotalPaginas, setUserTotalPaginas] = useState(1);
+  const [userTotalRegs, setUserTotalRegs] = useState(0);
 
   const canManageUsers = hasPermission("users.manage");
   const canManageRoles = hasPermission("roles.manage");
@@ -40,14 +44,17 @@ export function Admin() {
     setError("");
     try {
       const [usersData, rolesData, permData, branchesData, routesData] = await Promise.all([
-        canManageUsers || canManageRoles || canManageScope ? getAdminUsers() : Promise.resolve([]),
+        canManageUsers || canManageRoles || canManageScope ? getAdminUsers(userPage, userPageSize) : Promise.resolve({ data: [] }),
         canManageRoles ? getAdminRoles() : Promise.resolve([]),
         canManageUsers || canManageRoles || canManageScope ? getAdminPermissions() : Promise.resolve([]),
         canManageUsers || canManageRoles || canManageScope ? getAdminBranches() : Promise.resolve([]),
         canManageUsers || canManageRoles || canManageScope ? getAdminRoutes() : Promise.resolve([]),
       ]);
-      const freshUsers = Array.isArray(usersData) ? usersData : [];
+      const userData = usersData.data || usersData;
+      const freshUsers = Array.isArray(userData) ? userData : [];
       setUsers(freshUsers);
+      setUserTotalPaginas(usersData.tot_pags || 1);
+      setUserTotalRegs(usersData.total_regs || 0);
       setRoles(Array.isArray(rolesData) ? rolesData : []);
       setPermissions(Array.isArray(permData) ? permData : []);
       setBranches(Array.isArray(branchesData) ? branchesData : []);
@@ -72,7 +79,7 @@ export function Admin() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [userPage]);
 
   const usersWithRoles = useMemo(() => {
     return users.map((u) => ({
@@ -133,7 +140,7 @@ export function Admin() {
             routes={routes}
             selectedUser={selectedUser}
             onSelectUser={setSelectedUser}
-            onRefresh={loadData}
+            onRefresh={() => { setUserPage(1); loadData(); }}
           />
         )}
 
@@ -147,6 +154,53 @@ export function Admin() {
 
         {activeTab === "permissions" && (
           <PermissionReference permissions={permissions} />
+        )}
+
+        {activeTab === "users" && userTotalRegs > 0 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center p-3 bg-white rounded-lg shadow mt-4 gap-3">
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <span>
+                Mostrando {((userPage - 1) * userPageSize) + 1}-{Math.min(userPage * userPageSize, userTotalRegs)} de {userTotalRegs} registros
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => setUserPage(1)}
+                disabled={userPage === 1}
+                title="Primera página"
+              >
+                <FiChevronsLeft size={16} />
+              </button>
+              <button
+                className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => setUserPage((prev) => Math.max(prev - 1, 1))}
+                disabled={userPage === 1}
+                title="Página anterior"
+              >
+                <FiChevronLeft size={16} />
+              </button>
+              <span className="px-3 text-sm text-gray-600">
+                Pag. {userPage} / {userTotalPaginas}
+              </span>
+              <button
+                className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => setUserPage((prev) => prev + 1)}
+                disabled={userPage >= userTotalPaginas}
+                title="Página siguiente"
+              >
+                <FiChevronRight size={16} />
+              </button>
+              <button
+                className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => setUserPage(userTotalPaginas)}
+                disabled={userPage >= userTotalPaginas}
+                title="Última página"
+              >
+                <FiChevronsRight size={16} />
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

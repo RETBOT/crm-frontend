@@ -27,10 +27,11 @@ import {
   getActivityUsers,
   getTiposActividad,
 } from "../../api/activities";
-import { getClientes, getContactos } from "../../api/accounts";
-import { ActivityForm } from "../../components";
+import { getContactos } from "../../api/accounts";
+import { ActivityForm, CustomerSearchSelect } from "../../components";
 import { CheckinModal } from "../../components/activities/checkin-modal";
 import { hasPermission } from "../../utils/auth";
+import { logger } from "../../utils/logger";
 
 const statusStyles = {
   Pendiente: "bg-yellow-100 text-yellow-800",
@@ -106,7 +107,6 @@ export function Activities() {
   const [showForm, setShowForm] = useState(false);
   const [editingActivity, setEditingActivity] = useState(null);
   const [activityTypes, setActivityTypes] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [assignees, setAssignees] = useState([]);
   const [formContacts, setFormContacts] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -194,23 +194,13 @@ export function Activities() {
     }
   };
 
-  const fetchCustomersLight = async () => {
-    try {
-      const res = await getClientes(0, "", "", "ACTIVO", "", 1, 0, "");
-      const data = res.data || res;
-      setCustomers(Array.isArray(data) ? data : []);
-    } catch {
-      setCustomers([]);
-    }
-  };
-
   const fetchAssignees = async () => {
     try {
       const res = await getActivityUsers();
       const data = Array.isArray(res) ? res : (res.data || []);
       setAssignees(data);
     } catch (err) {
-      console.error('Error fetching assignees:', err);
+      logger.error('Error fetching assignees:', err);
       setAssignees([]);
     }
   };
@@ -221,9 +211,9 @@ export function Activities() {
       return;
     }
     try {
-      const res = await getContactos(clienteId);
-      const data = Array.isArray(res) ? res : (res.data || []);
-      setFormContacts(data);
+      const res = await getContactos(clienteId, 1, 100);
+      const data = res.data || res;
+      setFormContacts(Array.isArray(data) ? data : []);
     } catch {
       setFormContacts([]);
     }
@@ -235,7 +225,6 @@ export function Activities() {
 
   useEffect(() => {
     fetchTipos();
-    fetchCustomersLight();
     fetchAssignees();
   }, []);
 
@@ -422,7 +411,6 @@ export function Activities() {
             title={editingActivity ? "Editar Actividad" : "Nueva Actividad"}
             activityTypes={activityTypes}
             contacts={formContacts}
-            customerList={customers}
             assigneeList={canAssign ? assignees : []}
             onCustomerChange={fetchFormContacts}
             initialData={editingActivity}
@@ -507,18 +495,11 @@ export function Activities() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Cliente</label>
-                    <select
-                      className="w-full border rounded-lg px-3 py-2 text-sm"
+                    <CustomerSearchSelect
                       value={filterCustomer}
-                      onChange={(e) => setFilterCustomer(e.target.value)}
-                    >
-                      <option value="">Todos los clientes</option>
-                      {customers.map((c) => (
-                        <option key={c.customer_id || c.CLIENTEID} value={c.customer_id || c.CLIENTEID}>
-                          {c.NOMBRECLI || c.customer_name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(id) => setFilterCustomer(id)}
+                      placeholder="Buscar cliente..."
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Prioridad</label>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FiPhone,
   FiMail,
@@ -9,14 +9,17 @@ import {
   FiMessageSquare,
   FiCalendar,
   FiChevronDown,
+  FiChevronsLeft,
+  FiChevronLeft,
+  FiChevronRight,
+  FiChevronsRight,
 } from "react-icons/fi";
-import { getClientes, getContactos, contactos_ABC, getPuestos } from "../../api/accounts";
+import { getContactos, contactos_ABC, getPuestos } from "../../api/accounts";
 import { getTiposActividad, crearActividad } from "../../api/activities";
-import { ContactForm, ActivityForm, Notification } from "../../components/index";
+import { ContactForm, ActivityForm, Notification, CustomerSearchSelect } from "../../components/index";
 import { hasPermission } from "../../utils/auth";
 
 export function Contacts() {
-  const [customers, setCustomers] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [contacts, setContacts] = useState([]);
   const [puestos, setPuestos] = useState([]);
@@ -33,6 +36,10 @@ export function Contacts() {
   const [error, setError] = useState("");
   const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  const [totalRegs, setTotalRegs] = useState(0);
 
   useEffect(() => {
     const handleResize = () => setIsMobileView(window.innerWidth < 768);
@@ -49,16 +56,6 @@ export function Contacts() {
   };
 
   useEffect(() => {
-    const loadCustomers = async () => {
-      try {
-        const res = await getClientes(0, "", "", "ACTIVO", "", 1, 0, "");
-        const data = res.data || res;
-        setCustomers(Array.isArray(data) ? data : []);
-      } catch {
-        setCustomers([]);
-      }
-    };
-
     const loadPuestos = async () => {
       try {
         const res = await getPuestos("");
@@ -83,7 +80,6 @@ export function Contacts() {
       }
     };
 
-    loadCustomers();
     loadPuestos();
     loadTipos();
   }, []);
@@ -93,9 +89,11 @@ export function Contacts() {
     setError("");
     try {
       const clienteId = selectedCustomerId || "";
-      const res = await getContactos(clienteId);
-      const data = Array.isArray(res) ? res : res.data || [];
-      setContacts(data);
+      const res = await getContactos(clienteId, page, pageSize);
+      const data = res.data || res;
+      setContacts(Array.isArray(data) ? data : []);
+      setTotalPaginas(res.tot_pags || 1);
+      setTotalRegs(res.total_regs || 0);
     } catch (err) {
       setError(err?.message || "Error al cargar contactos");
       setContacts([]);
@@ -107,9 +105,13 @@ export function Contacts() {
   useEffect(() => {
     fetchContacts();
     setSelectedContact(null);
+  }, [selectedCustomerId, page]);
+
+  useEffect(() => {
+    setPage(1);
   }, [selectedCustomerId]);
 
-  const filteredContacts = contacts.filter((c) => {
+  const filteredContacts = useMemo(() => contacts.filter((c) => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
@@ -118,7 +120,7 @@ export function Contacts() {
       (c.EMAIL || "").toLowerCase().includes(search) ||
       (c.TELEFONO || "").includes(search)
     );
-  });
+  }), [contacts, searchTerm]);
 
   const handleCreateContact = async (formData) => {
     const customerId = selectedCustomerId || formCustomerId;
@@ -257,10 +259,6 @@ export function Contacts() {
     return 0;
   };
 
-  const selectedCustomer = customers.find(
-    (c) => String(c.CLIENTEID || c.customer_id) === String(selectedCustomerId)
-  );
-
   return (
     <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
@@ -273,18 +271,12 @@ export function Contacts() {
 
         <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
           <div className="p-4 border-b flex flex-col md:flex-row md:items-center gap-3">
-            <select
-              className="border rounded-lg p-2 text-sm flex-1 w-full md:max-w-xs"
+            <CustomerSearchSelect
               value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
-            >
-              <option value="">Todos los clientes</option>
-              {customers.map((c) => (
-                <option key={c.CLIENTEID || c.customer_id} value={c.CLIENTEID || c.customer_id}>
-                  {c.customer_name || c.NOMBRECLI}
-                </option>
-              ))}
-            </select>
+              onChange={(id) => { setSelectedCustomerId(id); }}
+              placeholder="Buscar cliente..."
+              className="flex-1 w-full md:max-w-xs"
+            />
 
             <div className="relative flex-1 max-w-md">
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -316,18 +308,11 @@ export function Contacts() {
               {!selectedCustomerId && !editingContact && (
                 <div className="mb-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                  <select
-                    className="border rounded p-2 w-full text-sm"
+                  <CustomerSearchSelect
                     value={formCustomerId}
-                    onChange={(e) => setFormCustomerId(e.target.value)}
-                  >
-                    <option value="">Selecciona un cliente para el contacto</option>
-                    {customers.map((c) => (
-                <option key={c.CLIENTEID || c.customer_id} value={c.CLIENTEID || c.customer_id}>
-                        {c.customer_name || c.NOMBRECLI}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(id) => setFormCustomerId(id)}
+                    placeholder="Selecciona un cliente para el contacto"
+                  />
                 </div>
               )}
               {(selectedCustomerId || editingContact || formCustomerId) && (
@@ -535,6 +520,62 @@ export function Contacts() {
             </div>
           )}
         </div>
+
+        {totalRegs > 0 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center p-3 bg-white rounded-lg shadow mt-4 gap-3">
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <span>
+                Mostrando {((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRegs)} de {totalRegs} registros
+              </span>
+              <select
+                className="border rounded px-2 py-1 text-sm"
+                value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              >
+                <option value={25}>25 por página</option>
+                <option value={50}>50 por página</option>
+                <option value={100}>100 por página</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+                title="Primera página"
+              >
+                <FiChevronsLeft size={16} />
+              </button>
+              <button
+                className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+                title="Página anterior"
+              >
+                <FiChevronLeft size={16} />
+              </button>
+              <span className="px-3 text-sm text-gray-600">
+                Pag. {page} / {totalPaginas}
+              </span>
+              <button
+                className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => setPage((prev) => prev + 1)}
+                disabled={page >= totalPaginas}
+                title="Página siguiente"
+              >
+                <FiChevronRight size={16} />
+              </button>
+              <button
+                className="p-1.5 rounded border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => setPage(totalPaginas)}
+                disabled={page >= totalPaginas}
+                title="Última página"
+              >
+                <FiChevronsRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {selectedContact && (
           <div className="bg-white rounded-lg shadow overflow-hidden">

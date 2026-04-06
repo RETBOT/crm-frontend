@@ -1,15 +1,38 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiFileText, FiCalendar, FiDollarSign, FiCheckCircle, FiXCircle, FiPlus, FiMenu, FiChevronDown, FiChevronUp, FiEdit } from "react-icons/fi";
-import { getClientes, getContactos, getSucursales, getRutas, getPuestos, contactos_ABC, clientes_ABC, convertirProspecto } from "../../api/accounts";
+import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiDollarSign, FiXCircle, FiPlus, FiChevronDown, FiChevronUp, FiEdit } from "react-icons/fi";
+import { getClientes, getContactos, getSucursales, getVendedores, getPuestos, contactos_ABC, clientes_ABC, convertirProspecto } from "../../api/accounts";
 import { getOpportunitiesByCustomer } from "../../api/opportunities";
 import { ContactForm, CustomerForm, ActivityList, Notification } from "../../components/index";
 import { hasPermission } from "../../utils/auth";
+import { logger } from "../../utils/logger";
+
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center py-8">
+    <svg aria-hidden="true" className="inline w-8 h-8 text-gray-200 animate-spin fill-gray-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+      <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+    </svg>
+    <span className="sr-only">Cargando...</span>
+  </div>
+);
+
+const EmptyState = ({ message = "No se encontraron prospectos" }) => (
+  <div className="text-center py-12">
+    <div className="mx-auto w-24 h-24 text-gray-400">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <h3 className="mt-2 text-sm font-medium text-gray-900">{message}</h3>
+    <p className="mt-1 text-sm text-gray-500">Intente cambiar los filtros de búsqueda</p>
+  </div>
+);
 
 export function Prospects() {
   /********************ESTADOS****************************************************************************************************************** */
   const [prospects, setProspects] = useState([]);
   const [sucursales, setSucursales] = useState([]);
-  const [rutas, setRutas] = useState([]);
+  const [vendedores, setVendedores] = useState([]);
   const [puestos, setPuestos] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
@@ -52,8 +75,11 @@ export function Prospects() {
 
   /********************PETICIONES****************************************************************************************************************** */
   useEffect(() => { fetchProspects(); }, [filters, page]);
-  useEffect(() => { fetchRutas(); }, [filters.sucursal]);
-  useEffect(() => { fetchSucursales(); fetchRutas(); fetchPuestos(); }, []);
+  useEffect(() => {
+    fetchSucursales();
+    fetchVendedores();
+    fetchPuestos();
+  }, []);
 
   useEffect(() => {
     const handleResize = () => setIsMobileView(window.innerWidth < 768);
@@ -65,14 +91,14 @@ export function Prospects() {
     setLoading(true);
     setError(null);
     try {
-      const res = await getClientes(0, filters.searchTerm, filters.sucursal, filters.status, filters.salesRep, page, 0, 'PROSPECTO');
+      const res = await getClientes(0, filters.searchTerm, filters.sucursal, filters.status, filters.salesRep, page, 20, 'PROSPECTO');
       const prospectsData = res.data || res;
       const total_paginas = res.tot_pags || 1;
       const dataArray = Array.isArray(prospectsData) ? prospectsData : [prospectsData];
       setProspects(dataArray);
       setTotalPaginas(total_paginas);
     } catch (e) {
-      console.error("Error al obtener prospectos:", e);
+      logger.error("Error al obtener prospectos:", e);
       setError("Error al cargar los prospectos. Intente nuevamente.");
       setProspects([]);
     } finally {
@@ -82,11 +108,11 @@ export function Prospects() {
 
   const fetchContactos = async (CLIENTEID) => {
     try {
-      const res = await getContactos(CLIENTEID);
-      const data = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-      return data;
+      const res = await getContactos(CLIENTEID, 1, 100);
+      const data = res.data || res;
+      return Array.isArray(data) ? data : [];
     } catch (e) {
-      console.error("Error al obtener contactos:", e);
+      logger.error("Error al obtener contactos:", e);
       return [];
     }
   };
@@ -97,19 +123,19 @@ export function Prospects() {
       const sucursalesData = Array.isArray(res) ? res : (res.data || []);
       setSucursales(sucursalesData);
     } catch (e) {
-      console.error("Error al obtener las sucursales: ", e);
+      logger.error("Error al obtener las sucursales:", e);
       setSucursales([]);
     }
   };
 
-  const fetchRutas = async () => {
+  const fetchVendedores = async () => {
     try {
-      const res = await getRutas(filters.sucursal);
-      const rutasData = Array.isArray(res) ? res : (res.data || []);
-      setRutas(rutasData);
+      const res = await getVendedores(filters.sucursal);
+      const vendedoresData = Array.isArray(res) ? res : (res.data || []);
+      setVendedores(vendedoresData);
     } catch (e) {
-      console.error("Error al obtener las rutas: ", e);
-      setRutas([]);
+      logger.error("Error al obtener los vendedores:", e);
+      setVendedores([]);
     }
   };
 
@@ -119,7 +145,7 @@ export function Prospects() {
       const puestosData = Array.isArray(res) ? res : (res.data || []);
       setPuestos(puestosData);
     } catch (e) {
-      console.error("Error al obtener los puestos: ", e);
+      logger.error("Error al obtener los puestos:", e);
       setPuestos([]);
     }
   };
@@ -146,7 +172,7 @@ export function Prospects() {
       if (tab === "Oportunidades") data = await getOpportunitiesByCustomer(cliente.customer_id || cliente.CLIENTEID);
       if (tab !== "Actividades" && tab !== "Detalles") setSelectedAccount(prev => ({ ...prev, [tab]: data }));
     } catch (e) {
-      console.error(e);
+      logger.error("Error loading tab data:", e);
     } finally {
       setLoadingTab(false);
     }
@@ -305,7 +331,7 @@ export function Prospects() {
         showNotification(response.msg || "Operación no completada", "error");
       }
     } catch (error) {
-      console.error("Error al guardar contacto:", error);
+      logger.error("Error al guardar contacto:", error);
       showNotification(error.message || "Ocurrió un error al guardar el contacto", "error");
     } finally {
       setSavingContact(false);
@@ -340,7 +366,7 @@ export function Prospects() {
         showNotification(response.msg || "No se pudo eliminar el contacto", "error");
       }
     } catch (error) {
-      console.error("Error al eliminar contacto:", error);
+      logger.error("Error al eliminar contacto:", error);
       showNotification(error.message || "Ocurrió un error al eliminar el contacto", "error");
     }
   }, [selectedAccount]);
@@ -408,8 +434,8 @@ export function Prospects() {
                 <p className="text-gray-800">{acc.SUCURSAL || 'No asignada'}</p>
               </div>
               <div className="border-b pb-2">
-                <label className="block text-sm font-medium text-gray-500 mb-1">Ruta</label>
-                <p className="text-gray-800">{acc.RUTAID ? `${acc.RUTAID} - ${acc.RUTA}` : (acc.RUTA || 'No asignada')}</p>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Vendedor</label>
+                <p className="text-gray-800">{acc.VENDEDORID ? `${acc.VENDEDORID} - ${acc.VENDEDOR}` : (acc.VENDEDOR || 'No asignado')}</p>
               </div>
               {selectedAccount.LAT !== 0 && selectedAccount.LON !== 0 && (
                 <div className="pt-2">
@@ -644,28 +670,6 @@ export function Prospects() {
     }
   };
 
-  const LoadingSpinner = () => (
-    <div className="flex justify-center items-center py-8">
-      <svg aria-hidden="true" className="inline w-8 h-8 text-gray-200 animate-spin fill-gray-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
-        <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
-      </svg>
-      <span className="sr-only">Cargando...</span>
-    </div>
-  );
-
-  const EmptyState = ({ message = "No se encontraron prospectos" }) => (
-    <div className="text-center py-12">
-      <div className="mx-auto w-24 h-24 text-gray-400">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <h3 className="mt-2 text-sm font-medium text-gray-900">{message}</h3>
-      <p className="mt-1 text-sm text-gray-500">Intente cambiar los filtros de búsqueda</p>
-    </div>
-  );
-
   const formatCurrency = (value, currency = 'MXN') => {
     if (value === null || value === undefined || typeof value !== 'number') return 'N/A';
     const options = {
@@ -718,7 +722,7 @@ export function Prospects() {
           title="Nuevo prospecto"
           customerType="PROSPECTO"
           sucursales={sucursales}
-          rutas={rutas}
+          rutas={vendedores}
           onSave={handleCreateProspect}
           onCancel={() => setShowProspectForm(false)}
           saving={savingProspect}
@@ -731,7 +735,7 @@ export function Prospects() {
           title={`Editar prospecto: ${editingProspect.NOMBRECLI}`}
           customerType="PROSPECTO"
           sucursales={sucursales}
-          rutas={rutas}
+          rutas={vendedores}
           initialData={editingProspect}
           submitLabel="Actualizar"
           onSave={handleUpdateProspect}
@@ -839,8 +843,8 @@ export function Prospects() {
                     value={filters.salesRep}
                     onChange={e => handleFilterChange("salesRep", e.target.value)}
                   >
-                    <option value="">Todos las rutas</option>
-                    {rutas.map(s => (
+                    <option value="">Todos los vendedores</option>
+                    {vendedores.map(s => (
                       <option key={s.ID} value={s.ID}>
                         {s.DSC}
                       </option>
@@ -871,7 +875,7 @@ export function Prospects() {
                         <span className={`inline-flex px-2 py-0.5 text-xs rounded-full ${acc.ESTATUS === "ACTIVO" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
                           {acc.ESTATUS}
                         </span>
-                        <span className="text-gray-600">{acc.RUTAID ? `${acc.RUTAID}-` : ''}{acc.RUTA || ''}</span>
+                        <span className="text-gray-600">{acc.VENDEDORID ? `${acc.VENDEDORID}-` : ''}{acc.VENDEDOR || ''}</span>
                       </div>
                     </div>
                   ))}
@@ -946,8 +950,8 @@ export function Prospects() {
                     value={filters.salesRep}
                     onChange={e => handleFilterChange("salesRep", e.target.value)}
                   >
-                    <option value="">Todos las rutas</option>
-                    {rutas.map(s => (
+                    <option value="">Todos los vendedores</option>
+                    {vendedores.map(s => (
                       <option key={s.ID} value={s.ID}>
                         {s.DSC}
                       </option>
@@ -962,7 +966,7 @@ export function Prospects() {
                   <tr>
                     <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Nombre</th>
                     <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Estatus</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Ruta</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Vendedor</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -988,7 +992,7 @@ export function Prospects() {
                             {acc.ESTATUS}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm">{acc.RUTAID ? `${acc.RUTAID}-` : ''}{acc.RUTA || ''}</td>
+                        <td className="px-4 py-3 text-sm">{acc.VENDEDORID ? `${acc.VENDEDORID}-` : ''}{acc.VENDEDOR || ''}</td>
                       </tr>
                     ))
                   )}

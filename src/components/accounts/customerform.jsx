@@ -335,7 +335,7 @@ export const CustomerForm = ({
         </select>
 
         <select name="RUTA" value={formData.RUTA} onChange={handleChange} className="border rounded p-2">
-          <option value="">Selecciona ruta</option>
+          <option value="">Selecciona vendedor</option>
           {availableRoutes.map((r) => (
             <option key={r.ID} value={r.ID}>
               {r.DSC}

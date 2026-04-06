@@ -40,11 +40,11 @@ export const getSucursales = async (DSC) => {
   }
 };
 
-export const getRutas = async (DSC) => {
+export const getVendedores = async (DSC) => {
   const token = localStorage.getItem("token");
   const usr = localStorage.getItem("usr");
   try { 
-    const response = await axios.post(`${url}cn/rutas`, {
+    const response = await axios.post(`${url}cn/vendedores`, {
         CNUSERID: usr, 
         DESCRIPCION: DSC
     }, {
@@ -60,11 +60,11 @@ export const getRutas = async (DSC) => {
 
     if (status === 401) {
       logger.debug("Token expirado. Renovando...");
-      return await refreshToken(getRutas, DSC);
+      return await refreshToken(getVendedores, DSC);
     }
 
     if (status) {
-      const msg = error.response.data?.message || "Error al obtener las rutas";
+      const msg = error.response.data?.message || "Error al obtener los vendedores";
       throw new Error(msg);
     }
 
@@ -119,11 +119,13 @@ export const getClientes = async (CLIENTEID, NOMBRECLI, SUCURSAL, ESTATUS, RUTA,
   }
 };
 
-export const getContactos = async (CLIENTEID) => {
+export const getContactos = async (CLIENTEID, PAGE = 1, NUM = 50) => {
   const token = localStorage.getItem("token");
   try { 
     const response = await axios.post(`${url}cn/contactos`, {
-        CLIENTEID: CLIENTEID
+        CLIENTEID: CLIENTEID,
+        NPAG: PAGE,
+        TPAG: NUM,
     }, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -137,7 +139,7 @@ export const getContactos = async (CLIENTEID) => {
 
     if (status === 401) {
       logger.debug("Token expirado. Renovando...");
-      return await refreshToken(getContactos, CLIENTEID);
+      return await refreshToken(getContactos, CLIENTEID, PAGE, NUM);
     }
 
     if (status) {

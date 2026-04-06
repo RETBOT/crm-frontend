@@ -5,3 +5,6 @@ export * from "./accounts/activitylist";
 export * from "./opportunities/opportunityform";
 export * from "./notifications/notification";
 export * from "./activities/checkin-modal";
+export * from "./email/EmailComposer";
+export * from "./email/EmailHistory";
+export * from "./email/ConnectEmailModal";

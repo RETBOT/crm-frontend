@@ -8,9 +8,9 @@ import {
   MapIcon,
   Cog6ToothIcon,
   CubeIcon,
-
+  CalendarIcon,
 } from "@heroicons/react/24/solid";
-import { Home, Accounts, Prospects, Activities, Contacts, Opportunities, Reports, Maps, Admin, Products, Profile } from "@/pages/dashboard";
+import { Home, Accounts, Prospects, Activities, Contacts, Opportunities, Reports, Maps, Admin, Products, Profile, CalendarPage, EmailTemplates } from "@/pages/dashboard";
 import { SignIn, SignUp, ForgotPassword, ResetPassword } from "@/pages/auth";
 
 
@@ -56,6 +56,13 @@ export const rSidenavoutes = [
         path: "/activities",
         element: <Activities />,
       },
+      // calendario
+      {
+        icon: <CalendarIcon {...icon} />,
+        name: "Calendario",
+        path: "/calendar",
+        element: <CalendarPage />,
+      },
       // contactos
       {
         icon: <UserCircleIcon  {...icon} />,
@@ -91,6 +98,13 @@ export const rSidenavoutes = [
         name: "Mi Perfil",
         path: "/profile",
         element: <Profile />,
+      },
+      // plantillas de correo
+      {
+        icon: <InformationCircleIcon {...icon} />,
+        name: "Plantillas de correo",
+        path: "/email-templates",
+        element: <EmailTemplates />,
       },
       {
         icon: <Cog6ToothIcon {...icon} />,
@@ -141,6 +155,13 @@ export const routes = [
         path: "/activities",
         element: <Activities />,
       },
+      // calendario
+      {
+        icon: <CalendarIcon {...icon} />,
+        name: "calendar",
+        path: "/calendar",
+        element: <CalendarPage />,
+      },
       // contactos
       {
         icon: <InformationCircleIcon {...icon} />,
@@ -181,6 +202,12 @@ export const routes = [
         name: "profile",
         path: "/profile",
         element: <Profile />,
+      },
+      {
+        icon: <InformationCircleIcon {...icon} />,
+        name: "email-templates",
+        path: "/email-templates",
+        element: <EmailTemplates />,
       },
       // {
       //   icon: <TableCellsIcon {...icon} />,

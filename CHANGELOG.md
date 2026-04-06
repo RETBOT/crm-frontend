@@ -7,7 +7,26 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- Opcion de exportacion a CSV en el dropdown de Exportar en reportes
+- Integracion de correo electronico: enviar correos desde Gmail y Outlook sin salir del CRM
+- Sincronizacion de calendario: Google Calendar y Outlook Calendar integrados al CRM
+- Plantillas de correo: CRUD completo con variables dinamicas
+- Tracking de apertura y clics en correos enviados
+- Firmas de correo personalizables por usuario
+- Nueva tab "Correo" en Mi Perfil para conectar/desconectar cuentas de correo
+- Nueva pagina "Calendario" con vistas mensual, semanal, diaria y agenda
+- Nueva pagina "Plantillas de correo" para gestionar plantillas
+- Componente EmailComposer: editor de correo con selector de plantillas desde API
+- Componente EmailHistory: historial de correos enviados con paginacion
+- Componente ConnectEmailModal: flujo automatico de OAuth2 con verificacion de credenciales
+- Pagina EmailCallback: captura automatica del codigo OAuth y redireccion
+- Tab "Correo" en ficha de cliente para ver historial y enviar correos
+- API email.js: connectEmail, sendEmail, getEmailHistory, getConnectedAccounts, disconnectEmail, getOAuthStatus
+- API email-advanced.js: getEmailTemplates, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate, sendWithTemplate, getSignature, saveSignature, getTrackingStats
+- API calendar.js: syncCalendar, getCalendarEvents, createActivityFromEvent
+- Dependencias: react-big-calendar, moment
+- Componentes exportados desde components/index.js
+
+### Changed
 - Icono FiTable para la opcion de exportacion a CSV
 - Tab "Editar" en panel de detalle de usuario para modificar nombre, email, sucursal, estado activo y multi-sucursal
 - Columna "Último acceso" en tabla de usuarios del admin

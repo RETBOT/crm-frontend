@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation  } from "react-router-dom";
 import { Dashboard, Auth } from "@/layouts";
 import ProtectedRoute from "./ProtectedRoute";
 import { isAuthenticated } from "../utils/auth";
+import { EmailCallback } from "../pages/email-callback";
 
 const AuthWrapper = () => {
   const location = useLocation();
@@ -35,6 +36,8 @@ const AppRoutes = () => {
       />
       {/* Rutas públicas, controladas por AuthWrapper */}
       <Route path="/auth/*" element={<AuthWrapper />} />
+      {/* Callback OAuth para email */}
+      <Route path="/email/callback/:provider" element={<EmailCallback />} />
       {/* Redirección por defecto */}
       <Route
         path="*"

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiFileText, FiCalendar, FiDollarSign, FiCheckCircle, FiXCircle, FiPlus, FiMenu, FiChevronDown, FiChevronUp, FiEdit } from "react-icons/fi";
+import { FiSearch, FiFilter, FiUser, FiMapPin, FiPhone, FiFileText, FiCalendar, FiDollarSign, FiCheckCircle, FiXCircle, FiPlus, FiMenu, FiChevronDown, FiChevronUp, FiEdit, FiMail } from "react-icons/fi";
 import { getClientes, getContactos, getSucursales, getRutas, getPuestos, contactos_ABC, clientes_ABC } from "../../api/accounts";
 import { getOpportunitiesByCustomer } from "../../api/opportunities";
-import { ContactForm, CustomerForm, ActivityList, Notification } from "../../components/index";
+import { ContactForm, CustomerForm, ActivityList, Notification, EmailComposer, EmailHistory } from "../../components/index";
 import { hasPermission } from "../../utils/auth";
 
 export function Accounts() {
@@ -33,6 +33,8 @@ export function Accounts() {
     message: "",
     type: "success"
   });
+  const [showEmailComposer, setShowEmailComposer] = useState(false);
+  const [emailSentCount, setEmailSentCount] = useState(0);
 
   /********************DEBOUNCE BÚSQUEDA****************************************************************************************************************** */
   const [searchTerm, setSearchTerm] = useState("");
@@ -617,6 +619,24 @@ export function Accounts() {
         );
       case "Actividades":
         return <ActivityList clienteId={acc.customer_id || acc.CLIENTEID} contacts={acc.Contactos || []} customerData={acc} />;
+      case "Correo":
+        return (
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Historial de correos</h3>
+              <button
+                onClick={() => setShowEmailComposer(true)}
+                className="flex items-center bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
+              >
+                <FiMail className="mr-1" /> Nuevo correo
+              </button>
+            </div>
+            <EmailHistory
+              customerId={acc.customer_id || acc.CLIENTEID}
+              customerName={acc.NOMBRECLI}
+            />
+          </div>
+        );
       default:
         return null;
     }
@@ -677,6 +697,19 @@ export function Accounts() {
     <div className="bg-gray-50 min-h-screen p-4">
       {notification.show && (
         <Notification message={notification.message} type={notification.type} onClose={closeNotification} />
+      )}
+
+      {showEmailComposer && selectedAccount && (
+        <EmailComposer
+          to={selectedAccount.EMAIL || ""}
+          subject={`Seguimiento - ${selectedAccount.NOMBRECLI}`}
+          customerId={selectedAccount.customer_id || selectedAccount.CLIENTEID}
+          onClose={() => setShowEmailComposer(false)}
+          onSent={() => {
+            showNotification("Correo enviado exitosamente");
+            setEmailSentCount(prev => prev + 1);
+          }}
+        />
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -753,7 +786,7 @@ export function Accounts() {
             </div>
 
             <div className="flex border-b overflow-x-auto">
-              {["Detalles","Análisis","Contactos","Oportunidades","Actividades"].map(tab => (
+              {["Detalles","Análisis","Contactos","Oportunidades","Actividades","Correo"].map(tab => (
                 <button
                   key={tab}
                   className={`px-3 py-3 font-medium text-sm whitespace-nowrap ${activeTab.startsWith(tab) ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
@@ -1033,7 +1066,7 @@ export function Accounts() {
               </div>
 
               <div className="flex border-b overflow-x-auto">
-                {["Detalles","Análisis de Cliente", "Contactos","Oportunidades","Actividades"].map(tab => (
+                {["Detalles","Análisis de Cliente", "Contactos","Oportunidades","Actividades","Correo"].map(tab => (
                   <button
                     key={tab}
                     className={`px-4 py-3 font-medium text-sm whitespace-nowrap ${activeTab === tab ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}

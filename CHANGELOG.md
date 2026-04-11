@@ -7,6 +7,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ## [Unreleased]
 
 ### Added
+
+### Fixed
+- **Content Security Policy**: agregados `https://router.project-osrm.org` a `connect-src` y `https://cdnjs.cloudflare.com` a `style-src` para permitir rutas por calles y Font Awesome
+- **Mapa - Boton "Mi ubicacion"**: corregido z-index y posicion para que aparezca sobre el mapa
+- **Mapa - OSRM**: agregados logs de diagnostico para identificar cuando falla el calculo de rutas
+- **Mapa - vendedores undefined**: corregida variable no definida en `createPopupContent` (usaba `vendedores` en vez de `rutas`)
+- **Clientes - Editar**: agregado `key` dinamico al `CustomerForm` para forzar remonte y cargar vendedor correctamente
+- **Clientes - vendedor no aparece**: corregido uso de `VENDEDORID` en vez de `RUTAID` en inicializacion y useEffect
+- **Actividades - Nombre cliente**: ahora se muestra el nombre del cliente al crear y editar actividades
+  - `CustomerSearchSelect` ahora tiene callback `onCustomerSelect`
+  - `ActivityForm` acepta prop `customerName`
+- **Contactos - Nombre cliente**: ahora se muestra el nombre del cliente al crear y editar contactos
+- **Oportunidades - Nombre cliente**: ahora se muestra el nombre del cliente al crear y editar oportunidades
+- **Oportunidades - Productos no cargan**: corregido procesamiento de respuesta del API (`prodRes?.data`)
+
+### Changed
 - Integracion de correo electronico: enviar correos desde Gmail y Outlook sin salir del CRM
 
 ### Fixed

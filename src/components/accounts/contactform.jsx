@@ -5,6 +5,7 @@ import { FiUser, FiPhone, FiMail, FiMessageSquare, FiX, FiSave } from "react-ico
 export const ContactForm = ({ 
   initialData = {}, 
   puestos = [],
+  customerName,
   onSave, 
   onCancel,
   isEditing,
@@ -46,6 +47,12 @@ export const ContactForm = ({
           <FiX size={20} />
         </button>
       </div>
+
+      {customerName && (
+        <div className="mb-4 p-2 border border-gray-200 rounded-lg bg-gray-50 text-sm">
+          Cliente: {customerName}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">

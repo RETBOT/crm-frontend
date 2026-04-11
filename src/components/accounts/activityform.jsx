@@ -13,8 +13,10 @@ export const ActivityForm = ({
   contacts,
   initialData,
   customerId,
+  customerName,
   assigneeList = [],
   onCustomerChange,
+  onCustomerSelect,
   submitLabel,
   onSave,
   onCancel,
@@ -34,6 +36,7 @@ export const ActivityForm = ({
     OWNER_USER_ID: "",
   });
 
+  const [selectedCustomerName, setSelectedCustomerName] = useState(customerName || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,6 +50,16 @@ export const ActivityForm = ({
     if (onCustomerChange) {
       onCustomerChange(id ? Number(id) : 0);
     }
+    if (onCustomerSelect) {
+      onCustomerSelect({ id, name: "" });
+    }
+  };
+
+  const handleCustomerSelect = (customer) => {
+    if (onCustomerSelect) {
+      onCustomerSelect(customer);
+    }
+    setSelectedCustomerName(customer.name || "");
   };
 
   const handleSubmit = async (event) => {
@@ -109,8 +122,23 @@ export const ActivityForm = ({
             <CustomerSearchSelect
               value={formData.CUSTOMER_ID}
               onChange={handleCustomerChange}
+              onCustomerSelect={handleCustomerSelect}
               placeholder="Buscar cliente..."
             />
+            {selectedCustomerName && (
+              <div className="mt-2 p-2 border border-gray-200 rounded-lg bg-gray-50 text-sm">
+                {selectedCustomerName}
+              </div>
+            )}
+          </div>
+        )}
+
+        {(customerId || initialData?.CUSTOMER_ID) && customerName && (
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+            <div className="p-2 border border-gray-200 rounded-lg bg-gray-50 text-sm">
+              {customerName}
+            </div>
           </div>
         )}
 

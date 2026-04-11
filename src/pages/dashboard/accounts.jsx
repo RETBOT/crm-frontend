@@ -730,14 +730,15 @@ export function Accounts() {
 
       {showCustomerForm && (
         <CustomerForm
-          title="Nuevo cliente"
+          key={editingCustomer ? `edit-${editingCustomer.CLIENTEID}` : 'new'}
+          title={editingCustomer ? "Editar cliente" : "Nuevo cliente"}
           customerType="CLIENTE"
           sucursales={sucursales}
           rutas={vendedores}
           initialData={editingCustomer}
-          submitLabel="Actualizar"
-          onSave={handleUpdateCustomer}
-          onCancel={() => setEditingCustomer(null)}
+          submitLabel={editingCustomer ? "Actualizar" : "Crear"}
+          onSave={editingCustomer ? handleUpdateCustomer : handleCreateCustomer}
+          onCancel={() => { setShowCustomerForm(false); setEditingCustomer(null); }}
           saving={savingCustomer}
         />
       )}
@@ -758,7 +759,7 @@ export function Accounts() {
                 {hasPermission("customers.update") && (
                   <button
                     className="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50"
-                    onClick={() => setEditingCustomer(selectedAccount)}
+                    onClick={() => { setEditingCustomer(selectedAccount); setShowCustomerForm(true); }}
                     title="Editar cliente"
                   >
                     <FiEdit size={18} />
@@ -1028,7 +1029,7 @@ export function Accounts() {
                   {hasPermission("customers.update") && (
                     <button
                       className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
-                      onClick={() => setEditingCustomer(selectedAccount)}
+                      onClick={() => { setEditingCustomer(selectedAccount); setShowCustomerForm(true); }}
                     >
                       Editar
                     </button>

@@ -42,6 +42,7 @@ export function Opportunities() {
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingOpp, setEditingOpp] = useState(null);
+  const [oppFormCustomerName, setOppFormCustomerName] = useState("");
   const [products, setProducts] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [notification, setNotification] = useState({ show: false, message: "", type: "success" });
@@ -114,8 +115,8 @@ export function Opportunities() {
           getPipelines(),
           getProducts(),
         ]);
-        setPipelines(Array.isArray(pipeRes) ? pipeRes : []);
-        setProducts(Array.isArray(prodRes) ? prodRes : []);
+        setPipelines(Array.isArray(pipeRes) ? pipeRes : (pipeRes?.data || []));
+        setProducts(prodRes?.data || prodRes || []);
       } catch (err) {
         logger.error("Error loading static data:", err);
       }
@@ -403,9 +404,10 @@ export function Opportunities() {
             contactList={contacts}
             products={products}
             pipelines={pipelines}
+            customerName={editingOpp ? editingOpp.NOMBRECLI : oppFormCustomerName}
             submitLabel={editingOpp ? "Actualizar" : "Crear"}
             onSave={editingOpp ? handleUpdate : handleCreate}
-            onCancel={() => { setShowForm(false); setEditingOpp(null); }}
+            onCancel={() => { setShowForm(false); setEditingOpp(null); setOppFormCustomerName(""); }}
           />
         )}
 

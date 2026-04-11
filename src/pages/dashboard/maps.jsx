@@ -113,7 +113,7 @@ function createPopupContent(cliente, rutas) {
   }
 
   if (cliente.VENDEDOR) {
-    const vendedorDsc = vendedores.find((v) => normalizeId(v.ID) === normalizeId(cliente.VENDEDOR))?.DSC || cliente.VENDEDOR;
+    const vendedorDsc = rutas.find((v) => normalizeId(v.ID) === normalizeId(cliente.VENDEDOR))?.DSC || cliente.VENDEDOR;
     const vendedor = document.createElement('p');
     vendedor.className = 'text-xs';
     vendedor.textContent = 'Vendedor: ' + vendedorDsc;
@@ -166,7 +166,7 @@ function LocateControl({ onLocationFound }) {
   };
 
   return (
-    <div className="absolute bottom-6 right-6 z-[250] flex flex-col items-end gap-2">
+    <div className="absolute bottom-6 right-6 z-[1000] flex flex-col items-end gap-2" style={{ pointerEvents: 'auto' }}>
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-lg shadow flex items-center gap-2">
           <span>{error}</span>
@@ -182,7 +182,7 @@ function LocateControl({ onLocationFound }) {
         title="Centrar en mi ubicación"
       >
         <FiNavigation className={locating ? 'animate-spin' : ''} size={16} />
-        <span className="hidden sm:inline">{locating ? 'Ubicando...' : 'Mi ubicación'}</span>
+        <span className="inline">{locating ? 'Ubicando...' : 'Mi ubicación'}</span>
       </button>
     </div>
   );
@@ -376,17 +376,37 @@ async function calculateOptimalRoute(selectedClients, userLocation) {
     .filter(hasCoordinates)
     .map((c) => [parseFloat(c.LON), parseFloat(c.LAT)]);
 
-  if (coords.length < 2) return null;
+  console.log('[ROUTE] allPoints:', allPoints);
+  console.log('[ROUTE] coords (lon,lat format):', coords);
+
+  if (coords.length < 2) {
+    console.log('[ROUTE] No hay suficientes coordenadas (necesita 2+)');
+    return null;
+  }
 
   const coordString = coords.map(([lon, lat]) => `${lon},${lat}`).join(';');
+  console.log('[ROUTE] coordString:', coordString);
+  
   const url = `https://router.project-osrm.org/trip/v1/driving/${coordString}?overview=full&geometries=geojson&steps=true&source=first`;
+  console.log('[ROUTE] URL:', url);
 
   try {
+    console.log('[ROUTE] Llamando a OSRM...');
     const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!response.ok) throw new Error('OSRM error');
+    console.log('[ROUTE] Response status:', response.status);
+    
+    if (!response.ok) {
+      console.error('[ROUTE] Response no ok:', response.status, response.statusText);
+      throw new Error('OSRM error: ' + response.status);
+    }
+    
     const data = await response.json();
+    console.log('[ROUTE] OSRM response:', data);
 
-    if (data.code !== 'Ok' || !data.trips?.[0]) throw new Error('No route found');
+    if (data.code !== 'Ok' || !data.trips?.[0]) {
+      console.error('[ROUTE] OSRM returned error or no trips:', data.code, data.message);
+      throw new Error('No route found: ' + (data.message || data.code));
+    }
 
     const trip = data.trips[0];
     const waypoints = data.waypoints || [];
@@ -408,6 +428,8 @@ async function calculateOptimalRoute(selectedClients, userLocation) {
     const totalDistance = (trip.distance / 1000).toFixed(1);
     const totalDuration = Math.round(trip.duration / 60);
 
+    console.log('[ROUTE] Ruta OSRM calculada exitosamente');
+
     return {
       type: 'osrm',
       geometry: trip.geometry,
@@ -416,7 +438,10 @@ async function calculateOptimalRoute(selectedClients, userLocation) {
       totalDistance,
       totalDuration,
     };
-  } catch {
+  } catch (error) {
+    console.error('[ROUTE] Error calculando ruta:', error.message);
+    console.log('[ROUTE] Usando fallback (líneas rectas)');
+    
     const fallbackCoords = coords.map(([lon, lat]) => [lat, lon]);
     const markers = fallbackCoords.map((coord, i) => ({
       coord,
@@ -1084,8 +1109,8 @@ export function Maps() {
         )}
       </div>
 
-      <div className="w-full md:w-2/3 h-1/2 md:h-full relative z-0">
-        <MapContainer center={initialCenter} zoom={initialZoom} style={{ height: '100%', width: '100%' }}>
+      <div className="w-full md:w-2/3 h-1/2 md:h-full relative">
+        <MapContainer center={initialCenter} zoom={initialZoom} style={{ height: '100%', width: '100%', zIndex: 1 }}>
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

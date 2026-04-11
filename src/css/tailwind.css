@@ -1,3 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.leaflet-container {
+  font-family: inherit;
+}
+
+.leaflet-control-container .leaflet-top,
+.leaflet-control-container .leaflet-bottom {
+  z-index: 500;
+}
+
+.leaflet-control {
+  z-index: 500;
+}
+
+.leaflet-overlay-pane {
+  z-index: 400;
+}
+
+.leaflet-popup-pane {
+  z-index: 600;
+}

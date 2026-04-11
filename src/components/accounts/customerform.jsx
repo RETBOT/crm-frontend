@@ -93,6 +93,7 @@ function CoordinatePicker({ lat, lon, onChange, addressFields }) {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [flyToPos, setFlyToPos] = useState(null);
+  const [isMapReady, setIsMapReady] = useState(false);
 
   const hasCoords = lat !== "" && lat !== null && lon !== "" && lon !== null && Number(lat) !== 0 && Number(lon) !== 0;
   const center = hasCoords ? [Number(lat), Number(lon)] : DEFAULT_CENTER;
@@ -104,6 +105,11 @@ function CoordinatePicker({ lat, lon, onChange, addressFields }) {
       setSearchQuery(autoAddress);
     }
   }, [addressFields]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsMapReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleLocationChange = useCallback(
     (newLat, newLng) => {
@@ -172,20 +178,26 @@ function CoordinatePicker({ lat, lon, onChange, addressFields }) {
       )}
 
       <div className="rounded-lg overflow-hidden border h-48 sm:h-[280px]">
-        <MapContainer
-          center={center}
-          zoom={hasCoords ? 15 : DEFAULT_ZOOM}
-          style={{ height: "100%", width: "100%" }}
-          scrollWheelZoom={true}
-        >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          />
-          <MapClickHandler onLocationChange={handleLocationChange} />
-          <MapController flyTo={flyToPos} />
-          <DraggableMarker position={markerPos} onDragEnd={handleLocationChange} />
-        </MapContainer>
+        {isMapReady ? (
+          <MapContainer
+            center={center}
+            zoom={hasCoords ? 15 : DEFAULT_ZOOM}
+            style={{ height: "100%", width: "100%" }}
+            scrollWheelZoom={true}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            />
+            <MapClickHandler onLocationChange={handleLocationChange} />
+            <MapController flyTo={flyToPos} />
+            <DraggableMarker position={markerPos} onDragEnd={handleLocationChange} />
+          </MapContainer>
+        ) : (
+          <div className="h-full w-full bg-gray-100 flex items-center justify-center">
+            <span className="text-gray-400 text-sm">Cargando mapa...</span>
+          </div>
+        )}
       </div>
       <div className="flex items-center justify-between mt-1">
         {hasCoords ? (
@@ -226,31 +238,28 @@ export const CustomerForm = ({
     EMAIL: initialData?.EMAIL || "",
     TEL: initialData?.TEL || "",
     ESTATUS: initialData?.ESTATUS || "ACTIVO",
-    SUCURSAL: initialData?.SUCURSALID ?? "",
-    RUTA: initialData?.RUTAID ?? "",
+    SUCURSAL: initialData?.SUCURSALID ?? initialData?.SUCURSAL ?? "",
+    RUTA: initialData?.VENDEDORID ?? "",
     LAT: initialData?.LAT ?? "",
     LON: initialData?.LON ?? "",
   });
 
   useEffect(() => {
-    if (!isEditing) return;
+    if (!initialData?.CLIENTEID) return;
 
-    setFormData((prev) => {
-      const updates = {};
+    const newRuta = initialData.VENDEDORID ?? "";
+    const newSucursal = initialData.SUCURSALID ?? "";
 
-      if (!prev.SUCURSAL && initialData?.SUCURSAL && sucursales.length > 0) {
-        const match = sucursales.find((s) => s.DSC === initialData.SUCURSAL);
-        if (match) updates.SUCURSAL = match.ID;
-      }
-
-      if (!prev.RUTA && initialData?.RUTA && rutas.length > 0) {
-        const match = rutas.find((r) => r.DSC === initialData.RUTA);
-        if (match) updates.RUTA = match.ID;
-      }
-
-      return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+    setFormData(prev => {
+      const needsUpdate = 
+        String(prev.RUTA) !== String(newRuta) || 
+        String(prev.SUCURSAL) !== String(newSucursal);
+      
+      if (!needsUpdate) return prev;
+      
+      return { ...prev, RUTA: newRuta, SUCURSAL: newSucursal };
     });
-  }, [isEditing, initialData, sucursales, rutas]);
+  }, [initialData?.CLIENTEID, initialData?.VENDEDORID, initialData?.SUCURSALID]);
 
   const availableRoutes = useMemo(() => {
     if (!formData.SUCURSAL) return rutas;

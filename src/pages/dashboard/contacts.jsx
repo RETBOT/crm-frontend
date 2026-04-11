@@ -30,6 +30,7 @@ export function Contacts() {
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [activityContact, setActivityContact] = useState(null);
   const [formCustomerId, setFormCustomerId] = useState("");
+  const [formCustomerName, setFormCustomerName] = useState("");
   const [activityTypes, setActivityTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -310,20 +311,29 @@ export function Contacts() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
                   <CustomerSearchSelect
                     value={formCustomerId}
-                    onChange={(id) => setFormCustomerId(id)}
+                    onChange={(id) => { setFormCustomerId(id); setFormCustomerName(""); }}
+                    onCustomerSelect={(customer) => setFormCustomerName(customer.name)}
                     placeholder="Selecciona un cliente para el contacto"
                   />
+                  {formCustomerName && (
+                    <div className="mt-2 p-2 border border-gray-200 rounded-lg bg-gray-50 text-sm">
+                      {formCustomerName}
+                    </div>
+                  )}
                 </div>
               )}
               {(selectedCustomerId || editingContact || formCustomerId) && (
                 <ContactForm
                   initialData={editingContact || {}}
                   puestos={puestos}
+                  customerName={editingContact ? editingContact.NOMBRECLI : formCustomerName}
                   onSave={editingContact ? handleUpdateContact : handleCreateContact}
                   onCancel={() => {
                     setShowContactForm(false);
                     setEditingContact(null);
                     setFormCustomerId("");
+                    setFormCustomerName("");
+                    setFormCustomerName("");
                   }}
                   isEditing={!!editingContact}
                   saving={saving}

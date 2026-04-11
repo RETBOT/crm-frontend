@@ -9,6 +9,7 @@ export const OpportunityForm = ({
   initialData,
   initialItems = [],
   customerId,
+  customerName,
   contactList = [],
   products = [],
   pipelines = [],
@@ -34,6 +35,8 @@ export const OpportunityForm = ({
     CONTACT_ID: initialData?.CONTACT_ID || "",
     PIPELINE_ID: initialData?.PIPELINE_ID || (pipelines.length > 0 ? pipelines[0].PIPELINE_ID : 1),
   });
+
+  const [selectedCustomerName, setSelectedCustomerName] = useState(customerName || "");
 
   const [items, setItems] = useState(
     initialItems.length > 0
@@ -175,8 +178,22 @@ export const OpportunityForm = ({
               <CustomerSearchSelect
                 value={formData.CUSTOMER_ID}
                 onChange={(id) => setFormData((p) => ({ ...p, CUSTOMER_ID: id }))}
+                onCustomerSelect={(customer) => setSelectedCustomerName(customer.name || "")}
                 placeholder="Buscar cliente..."
               />
+              {selectedCustomerName && (
+                <div className="mt-2 p-2 border border-gray-200 rounded-lg bg-gray-50 text-sm">
+                  {selectedCustomerName}
+                </div>
+              )}
+            </div>
+          )}
+          {(customerId || formData.CUSTOMER_ID) && customerName && !selectedCustomerName && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+              <div className="p-2 border border-gray-200 rounded-lg bg-gray-50 text-sm">
+                {customerName}
+              </div>
             </div>
           )}
           <div>

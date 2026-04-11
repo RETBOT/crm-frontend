@@ -110,6 +110,7 @@ export function Activities() {
   const [assignees, setAssignees] = useState([]);
   const [formContacts, setFormContacts] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [newActivityCustomerName, setNewActivityCustomerName] = useState("");
   const [checkinActivity, setCheckinActivity] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [filterType, setFilterType] = useState("");
@@ -240,6 +241,10 @@ export function Activities() {
     setPage(1);
   }, [activeFilter, debouncedSearch, filterType, filterCustomer, filterPriority, filterOwner, filterDueFrom, filterDueTo, pageSize]);
 
+  const handleCustomerSelectForNew = (customer) => {
+    setNewActivityCustomerName(customer.name);
+  };
+
   const handleCreate = async (payload) => {
     await crearActividad(payload);
     setShowForm(false);
@@ -317,7 +322,9 @@ export function Activities() {
       PRIORITY: activity.PRIORITY,
       CONTACT_ID: activity.CONTACT_ID,
       CUSTOMER_ID: activity.CUSTOMER_ID,
+      NOMBRECLI: activity.NOMBRECLI,
     });
+    setSelectedCustomer({ NOMBRECLI: activity.NOMBRECLI });
     setShowDrawer(false);
   }, []);
 
@@ -355,6 +362,38 @@ export function Activities() {
     };
     fetchCustomerData();
   }, [selectedActivity?.CUSTOMER_ID]);
+
+  useEffect(() => {
+    if (!editingActivity?.CUSTOMER_ID) {
+      return;
+    }
+    const fetchCustomerForEdit = async () => {
+      try {
+        const res = await getClientes(
+          editingActivity.CUSTOMER_ID,
+          "",
+          "",
+          "",
+          "",
+          1,
+          1,
+          ""
+        );
+        const data = res.data || res;
+        const customer = Array.isArray(data) ? data[0] : data;
+        if (customer) {
+          setSelectedCustomer({
+            NOMBRECLI: customer.NOMBRECLI || customer.customer_name,
+            LAT: customer.LAT || customer.latitude,
+            LON: customer.LON || customer.longitude,
+          });
+        }
+      } catch {
+        // Silently fail for editing
+      }
+    };
+    fetchCustomerForEdit();
+  }, [editingActivity?.CUSTOMER_ID]);
 
   useEffect(() => {
     const handleEsc = (e) => {
@@ -413,14 +452,18 @@ export function Activities() {
             contacts={formContacts}
             assigneeList={canAssign ? assignees : []}
             onCustomerChange={fetchFormContacts}
+            onCustomerSelect={!editingActivity ? handleCustomerSelectForNew : undefined}
             initialData={editingActivity}
             customerId={editingActivity?.CUSTOMER_ID || 0}
+            customerName={editingActivity ? selectedCustomer?.NOMBRECLI : newActivityCustomerName}
             submitLabel={editingActivity ? "Actualizar" : "Crear"}
             onSave={editingActivity ? handleUpdate : handleCreate}
             onCancel={() => {
               setShowForm(false);
               setEditingActivity(null);
               setFormContacts([]);
+              setSelectedCustomer(null);
+              setNewActivityCustomerName("");
             }}
           />
           </div>

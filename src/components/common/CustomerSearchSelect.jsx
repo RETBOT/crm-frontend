@@ -5,6 +5,7 @@ import { getClientes } from "../../api/accounts";
 export const CustomerSearchSelect = ({
   value,
   onChange,
+  onCustomerSelect,
   placeholder = "Buscar cliente...",
   className = "",
   tipoCliente = "ACTIVO",
@@ -65,7 +66,11 @@ export const CustomerSearchSelect = ({
 
   const handleSelect = (customer) => {
     const id = customer.customer_id || customer.CLIENTEID;
+    const name = customer.NOMBRECLI || customer.customer_name;
     onChange(id);
+    if (onCustomerSelect) {
+      onCustomerSelect({ id, name });
+    }
     setSearchTerm("");
     setOpen(false);
     setSelectedIndex(-1);
